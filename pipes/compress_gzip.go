@@ -56,6 +56,9 @@ func DecompressGZip(in, out chan goul.Item) {
 			fmt.Println("zlib read error", err)
 		}
 		buf, err := ioutil.ReadAll(r)
+		if err != nil {
+			fmt.Println("ioutil error", err)
+		}
 		r.Close()
 
 		sizeOrig := len(item.Data())

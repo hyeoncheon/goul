@@ -43,7 +43,7 @@ func DataWriter(in chan goul.Item) {
 	fmt.Println("DataWriter ready...")
 
 	var count int64
-	for _ = range in {
+	for range in {
 		count++
 	}
 	fmt.Printf("DataWriter counts total %v packets. counter finished.\n", count)

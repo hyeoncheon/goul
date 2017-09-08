@@ -1,5 +1,7 @@
 # Goul, Virtual Port Mirror over Internet (for Cloud)
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/hyeoncheon/goul)](https://goreportcard.com/report/github.com/hyeoncheon/goul)
+
 Goul(=Mirror in Korean: 거울) is a tool for virtual network port mirroring
 over the Internet, especially for cloud computing environment.
 

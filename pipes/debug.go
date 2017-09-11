@@ -10,8 +10,11 @@ import (
 
 //** sample filters and writers -------------------------------------
 
-// PacketPrinter is a sample pipe of simple standard out.
-func PacketPrinter(in, out chan goul.Item) {
+// PacketPrinter is a sample pipe print out packet structure to standard out.
+type PacketPrinter struct{}
+
+// Pipe implements goul.PacketPipe interface
+func (p *PacketPrinter) Pipe(in, out chan goul.Item) {
 	defer close(out)
 
 	fmt.Println("PacketPrinter ready...")
@@ -24,8 +27,16 @@ func PacketPrinter(in, out chan goul.Item) {
 	fmt.Println("PacketPrinter finished.")
 }
 
-// DataCounter is a sample pipe of simple standard out.
-func DataCounter(in, out chan goul.Item) {
+// Reverse implements goul.PacketPipe interface
+func (p *PacketPrinter) Reverse(in, out chan goul.Item) {
+	p.Pipe(in, out)
+}
+
+// DataCounter is a sample pipe just count the packets passed through.
+type DataCounter struct{}
+
+// Pipe implements goul.PacketPipe interface
+func (c *DataCounter) Pipe(in, out chan goul.Item) {
 	defer close(out)
 
 	var count int64
@@ -38,13 +49,23 @@ func DataCounter(in, out chan goul.Item) {
 	fmt.Printf("DataCounter counts total %v packets. counter finished.\n", count)
 }
 
-// DataWriter is a sample pipe of simple packet counter
-func DataWriter(in chan goul.Item) {
-	fmt.Println("DataWriter ready...")
+// Reverse implements goul.PacketPipe interface
+func (c *DataCounter) Reverse(in, out chan goul.Item) {
+	c.Pipe(in, out)
+}
+
+//** sample implementation of goul.Writer for debugging. ------------
+
+// NullWriter is a sample pipe of simple packet counter
+type NullWriter struct{}
+
+// Writer implements Writer interface
+func (d *NullWriter) Writer(in chan goul.Item) {
+	fmt.Println("NullWriter#Writer ready...")
 
 	var count int64
 	for range in {
 		count++
 	}
-	fmt.Printf("DataWriter counts total %v packets. counter finished.\n", count)
+	fmt.Printf("NullWriter#Writer counts total %v packets. counter finished.\n", count)
 }

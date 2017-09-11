@@ -12,13 +12,16 @@ import (
 	"github.com/hyeoncheon/goul"
 )
 
-// CompressGZip is a sample pipe of simple standard out.
-func CompressGZip(in, out chan goul.Item) {
+// CompressGZip is a sample processing pipe that compress the packet with gzip.
+type CompressGZip struct{}
+
+// Pipe implements goul.PacketPipe interface
+func (c *CompressGZip) Pipe(in, out chan goul.Item) {
 	defer close(out)
 
 	var count, totOrig, totComp int64
 	var b bytes.Buffer
-	fmt.Println("CompressGZip ready...")
+	fmt.Println("CompressGZip#Pipe ready...")
 	for item := range in {
 		b.Truncate(0)
 
@@ -37,16 +40,16 @@ func CompressGZip(in, out chan goul.Item) {
 		totComp += int64(sizeComp)
 		count++
 	}
-	fmt.Printf("CompressGZip: total %v packets, %v bytes, %.1f%%\n", count, totOrig, float64(totComp)/float64(totOrig)*100.0)
+	fmt.Printf("CompressGZip#Pipe: total %v packets, %v bytes, %.1f%%\n", count, totOrig, float64(totComp)/float64(totOrig)*100.0)
 }
 
-// DecompressGZip is a sample pipe of simple standard out.
-func DecompressGZip(in, out chan goul.Item) {
+// Reverse implements goul.PacketPipe interface
+func (c *CompressGZip) Reverse(in, out chan goul.Item) {
 	defer close(out)
 
 	var count, totOrig, totComp int64
 	var b bytes.Buffer
-	fmt.Println("DecompressGZip ready...")
+	fmt.Println("CompressGZip#Reverse ready...")
 	for item := range in {
 		b.Truncate(0)
 		b.Write(item.Data())
@@ -71,5 +74,5 @@ func DecompressGZip(in, out chan goul.Item) {
 		totComp += int64(sizeComp)
 		count++
 	}
-	fmt.Printf("DecompressGZip: total %v packets, %v bytes, %.1f%%\n", count, totOrig, float64(totComp)/float64(totOrig)*100.0)
+	fmt.Printf("CompressGZip#Reverse: total %v packets, %v bytes, %.1f%%\n", count, totOrig, float64(totComp)/float64(totOrig)*100.0)
 }

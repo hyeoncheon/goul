@@ -47,17 +47,15 @@ func main() {
 	gl.SetLogger(logger)
 	gl.SetOptions(false, 1600, 1)
 
-	/*
-		gl.AddPipe(pipes.CompressZLib)
-		gl.AddPipe(pipes.DecompressZLib)
+	gl.AddPipe(&pipes.PacketPrinter{})
 
-		gl.AddPipe(pipes.CompressGZip)
-		gl.AddPipe(pipes.DecompressGZip)
+	/*
+		gl.AddPipe(&pipes.CompressZLib{})
+		gl.AddPipe(&pipes.CompressGZip{})
 	*/
 
-	gl.AddPipe(pipes.PacketPrinter)
-	gl.AddPipe(pipes.DataCounter)
-	gl.SetWriter(pipes.DataWriter)
+	gl.AddPipe(&pipes.DataCounter{})
+	gl.SetWriter(&pipes.NullWriter{})
 
 	//* register singnal handlers and command pipiline...
 	sig := make(chan os.Signal, 1)

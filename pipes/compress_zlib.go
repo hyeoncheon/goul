@@ -12,13 +12,16 @@ import (
 	"github.com/hyeoncheon/goul"
 )
 
-// CompressZLib is a sample pipe of simple standard out.
-func CompressZLib(in, out chan goul.Item) {
+// CompressZLib is a sample processing pipe that compress the packet with zlib.
+type CompressZLib struct{}
+
+// Pipe implements goul.PacketPipe interface
+func (c *CompressZLib) Pipe(in, out chan goul.Item) {
 	defer close(out)
 
 	var count, totOrig, totComp int64
 	var b bytes.Buffer
-	fmt.Println("CompressZLib ready...")
+	fmt.Println("CompressZLib#Pipe ready...")
 	for item := range in {
 		b.Truncate(0)
 
@@ -37,16 +40,16 @@ func CompressZLib(in, out chan goul.Item) {
 		totComp += int64(sizeComp)
 		count++
 	}
-	fmt.Printf("CompressZLib: total %v packets, %v bytes, %.1f%%\n", count, totOrig, float64(totComp)/float64(totOrig)*100.0)
+	fmt.Printf("CompressZLib#Pipe: total %v packets, %v bytes, %.1f%%\n", count, totOrig, float64(totComp)/float64(totOrig)*100.0)
 }
 
-// DecompressZLib is a sample pipe of simple standard out.
-func DecompressZLib(in, out chan goul.Item) {
+// Reverse implements goul.PacketPipe interface
+func (c *CompressZLib) Reverse(in, out chan goul.Item) {
 	defer close(out)
 
 	var count, totOrig, totComp int64
 	var b bytes.Buffer
-	fmt.Println("DecompressZLib ready...")
+	fmt.Println("CompressZLib#Reverse ready...")
 	for item := range in {
 		b.Truncate(0)
 		b.Write(item.Data())
@@ -71,5 +74,5 @@ func DecompressZLib(in, out chan goul.Item) {
 		totComp += int64(sizeComp)
 		count++
 	}
-	fmt.Printf("DecompressZLib: total %v packets, %v bytes, %.1f%%\n", count, totOrig, float64(totComp)/float64(totOrig)*100.0)
+	fmt.Printf("CompressZLib#Reverse: total %v packets, %v bytes, %.1f%%\n", count, totOrig, float64(totComp)/float64(totOrig)*100.0)
 }

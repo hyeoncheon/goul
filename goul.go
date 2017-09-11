@@ -27,14 +27,21 @@ type Item interface {
 
 //** type for goul, pipeline functions ------------------------------
 
-// PacketPipe is a function that can handle packet data within pipeline.
-type PacketPipe func(in, out chan Item)
+// PacketPipe is an interface for the packet/data processing pipe
+type PacketPipe interface {
+	Pipe(in, out chan Item)
+	Reverse(in, out chan Item)
+}
 
-// Reader is a function that feed packet data in the start of the pipeline.
-type Reader func(in chan int, out chan Item)
+// Reader is an interface for the reader pipe
+type Reader interface {
+	Reader(in chan int, out chan Item)
+}
 
-// Writer is a function that consume the data in the end of the pipeline.
-type Writer func(in chan Item)
+// Writer is an interface for the writer pipe
+type Writer interface {
+	Writer(in chan Item)
+}
 
 // Goul is...
 type Goul struct {
@@ -72,9 +79,9 @@ func New(dev string, isReceiver bool, cmd chan int) (*Goul, error) {
 	}
 	g.inactive, g.err = pcap.NewInactiveHandle(g.device)
 	if g.isReceiver {
-		g.writer = g.Inject
+		g.writer = g
 	} else {
-		g.reader = g.Capture
+		g.reader = g
 	}
 	return g, g.err
 }
@@ -96,10 +103,10 @@ func (g *Goul) Run() error {
 		return errors.New(ErrNoReaderOrWriter)
 	}
 	ch := g.ExecReader()
-	for _, fn := range g.pipes {
-		ch = g.ExecPipe(fn, ch)
+	for _, pipe := range g.pipes {
+		ch = g.ExecPipe(pipe.Pipe, ch)
 	}
-	g.writer(ch)
+	g.writer.Writer(ch)
 	return nil
 }
 
@@ -108,14 +115,14 @@ func (g *Goul) Run() error {
 // be connected to this pipeline.
 func (g *Goul) ExecReader() chan Item {
 	ch := make(chan Item, g.bufferSize)
-	go g.reader(g.cmdChannel, ch)
+	go g.reader.Reader(g.cmdChannel, ch)
 	return ch
 }
 
 // ExecPipe creates new channel for output channel of the pipe and execute
 // the pipe as goroutine. It returns created output channel so next pipe can
 // be connected to this pipeline.
-func (g *Goul) ExecPipe(fn PacketPipe, in chan Item) chan Item {
+func (g *Goul) ExecPipe(fn func(in, out chan Item), in chan Item) chan Item {
 	ch := make(chan Item, g.bufferSize)
 	go fn(in, ch)
 	return ch
@@ -142,15 +149,21 @@ func (g *Goul) SetFilter(filter string) error {
 	return nil
 }
 
+// SetReader is...
+func (g *Goul) SetReader(r Reader) error {
+	g.reader = r
+	return nil
+}
+
 // SetWriter is...
-func (g *Goul) SetWriter(fn func(in chan Item)) error {
-	g.writer = fn
+func (g *Goul) SetWriter(w Writer) error {
+	g.writer = w
 	return nil
 }
 
 // AddPipe is...
-func (g *Goul) AddPipe(fn func(in, out chan Item)) error {
-	g.pipes = append(g.pipes, fn)
+func (g *Goul) AddPipe(pipe PacketPipe) error {
+	g.pipes = append(g.pipes, pipe)
 	return nil
 }
 
@@ -173,6 +186,11 @@ func (g *Goul) logf(format string, args ...interface{}) {
 }
 
 //** tap methods... -------------------------------------------------
+
+// Reader implements Reader interface
+func (g *Goul) Reader(cmd chan int, out chan Item) {
+	g.Capture(cmd, out)
+}
 
 // Capture is a device packet reader which used as reader when capturer mode.
 func (g *Goul) Capture(cmd chan int, out chan Item) {
@@ -208,6 +226,11 @@ func (g *Goul) Capture(cmd chan int, out chan Item) {
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
+}
+
+// Writer implements Writer interface
+func (g *Goul) Writer(in chan Item) {
+	g.Inject(in)
 }
 
 // Inject is a device packet writer which used as writer when injector mode.

@@ -2,11 +2,11 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/hyeoncheon/goul)](https://goreportcard.com/report/github.com/hyeoncheon/goul)
 
-Goul(=Mirror in Korean: 거울) is a tool for virtual network port mirroring
+Goul(거울; Mirror in English) is a tool for virtual network port mirroring
 over the Internet, especially for cloud computing environment.
 
-With legacy infrastructure, with many physical switches, we can configure
-a mirror port(SPAN) on the switch for network monitoring, analysis, and
+On legacy infrastructure, with many physical switches, we can use a port
+mirror(SPAN) on the switch for monitoring and analysing of network, and
 connecting a security appliances. But in cloud computing environment, it
 is not easy as legacy and in some cases, it is completely impossible.
 
@@ -24,11 +24,11 @@ library.
 ## Features
 
 * Mirror one network device(port) from virtual instance to remote system.
-* Selection of Rx, Tx or Both direction of traffic.
+* Selection of Rx, Tx or Both direction of traffic. (Plan)
 * Packet filtering based on pcap library's rule.
 * Pipelining for filtering, buffering, compression, deduplication, and more.
 * Use TCP/IP for transmission over the Internet.
-* Adaptive mode to reduce the impact of production traffic.
+* Support adaptive mode to reduce the impact of production traffic. (Plan)
 
 
 ## Work Flow
@@ -91,10 +91,144 @@ For example, Counter or packet printer is a transparent function.
 If the function used in process pipeline is not transparent one, then the
 reverse function must be exist on the receiver side.
 
+## Install
+
+Installation of Goul is same as any Go programs. Just get it.
+But while compiling it, it needs `libpcap` development packet so you need
+to install it before get. Below is the installation process for Ubuntu
+Linux. (Or other Debian based Linux distributions)
+
+```console
+$ sudo apt-get install libpcap-dev
+<...>
+$ go get github.com/hyeoncheon/goul/cmd/goul
+$ 
+$ ls $GOPATH/pkg/linux_amd64/github.com/hyeoncheon
+goul  goul.a
+$ 
+$ ls $GOPATH/bin
+goul
+$ 
+```
+
+## Running
+
+It runs in 2x2 mode.
+First, as described above, it can run as sender or receiver. It also run
+as server or client. This two type of modes are orthogonal so you can
+run it as sender client and receiver server pair or sender server and
+receiver client mode.
+
+The reason why I made these somewhat strange and/or confusing pair of
+mode is, I consider some network firewall environment. For example,
+if your receiver must be located in the network behind the wall, but
+your sender is located outside of the wall, you don't need to configure
+or ask firewall open to administrator. Just set the receiver as
+client. (Currently I am considering removing of this 2x2 mode and just
+make receiver as server and sender as client.
+Anyway, currently it support this 2x2 modes.)
+
+Command line options are shown below:
+
+```console
+$ goul -h
+Goul 0.1
+
+Goul is a packet capture program for cloud environment.
+
+If it runs as capturer mode, it captures all packets on local network
+interface and sends them to remote receiver over internet.
+The other side, while it runs as receiver mode, it receives packets from
+remote capturer and inject them into the interface on the system.
+
+Usage: goul [-Dhlrtv] [-a value] [-d value] [-p value] filters ...
+ -a, --addr=value  address to connect (for client)
+ -D, --debug       debugging mode (print log messages)
+ -d, --dev=value   network interface to read/write
+ -h, --help        help
+ -l, --list        list network devices
+ -p, --port=value  address to connect (default is 6001)
+ -r, --recv        run as receiver
+ -t, --test        test mode (no injection)
+ -v, --version     show version of goul
+$
+```
+
+If you just run this like below, it runs as sender server.
+
+```console
+$ sudo ./goul
+```
+
+For sender client, you can run Goul like below:
+
+```console
+$ sudo ./goul --addr 10.0.0.1
+```
+
+10.0.0.1 is a IP address of the receiver server. For serve this sender
+client, means receiver server, you can simply run Goul as below:
+
+
+```console
+$ sudo ./goul --recv
+```
+
+For receiver client, as you can imagin,
+
+```console
+$ sudo ./goul --recv --address 10.0.0.1
+```
+
+will be work. for server and client, it uses TCP port 6001 but you can
+set your own port number with `-p` flag followed by port number.
+
+The default network device is `eth0` but you can configure it with `-d` flag.
+If you don't know which network interface name is for you, you can simply
+try `-l` flag for listing all possible interfaces.
+
+```console
+$ goul -l
+
+Devices:
+* eth0
+  - IP address:  10.0.0.2
+  - IP address:  fe80::465:0000:0000:40000
+* eth1
+  - IP address:  192.168.0.2
+  - IP address:  fe80::4a8:0000:0000:0000
+* any
+* lo
+  - IP address:  127.0.0.1
+  - IP address:  ::1
+$ 
+```
+
+The Goul is currently on development and it can be unstable. So if you
+just want to test it without real packet injection, use `-t` flag.
+It allows receiver runs in testing mode then it does not inject but
+just display the number of packets it received.
+
+Along with `-t` flag, `-D` flag is useful for testing. It turns Goul in
+verbose mode and it print out a lots of messages while running.
+
+Please note that, The Goul's default capturing filter is `ip`. so it
+just ignore all non-IP protocols including L2 level protocols.
+If you want to set more specific filter, you can put it in the end of
+the command line. (`filters ...`) The filter rule is same as other
+`pcap` based application like `tcpdump`. So you can set
+`port 80 and port 443` as filter for getting `HTTP` and `HTTPS` traffic.
+
+
+Have fun with packets! and the Goul!
+
 
 ## Current Status
 
-* Just started to develop basic structure.
+* Support simple capturing and injection of packet over the Internet.
+* Currently all compression features are disabled by default.
+  * I found that it consumes CPU but the compression ratio is not effective.
+* Currently Pipeline configuration from command line is not supported.
 
 
 ## Caution!!!

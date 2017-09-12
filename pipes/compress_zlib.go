@@ -34,7 +34,7 @@ func (c *CompressZLib) Pipe(in, out chan goul.Item) {
 		sizeComp := len(b.Bytes())
 		fmt.Printf("zlib com size: %v/%v=%.2f\n", sizeComp, sizeOrig, float64(sizeComp)/float64(sizeOrig)*100.0)
 
-		out <- &ItemGeneric{data: b.Bytes()}
+		out <- &ItemGeneric{DATA: b.Bytes()}
 
 		totOrig += int64(sizeOrig)
 		totComp += int64(sizeComp)

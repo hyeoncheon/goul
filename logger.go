@@ -1,6 +1,8 @@
 package goul
 
-import "github.com/sirupsen/logrus"
+import (
+	"github.com/sirupsen/logrus"
+)
 
 // constants
 const (
@@ -10,7 +12,7 @@ const (
 	LogLevelErr   = "error"
 )
 
-// Logger is...
+// Logger is an interface of the logging facility
 type Logger interface {
 	Debug(args ...interface{})
 	Debugf(format string, args ...interface{})
@@ -28,7 +30,7 @@ type Logger interface {
 	Println(args ...interface{})
 }
 
-// NewLogger returns...
+// NewLogger returns new logger. currently an instance of logrus.
 func NewLogger(level string) Logger {
 	logger := logrus.New()
 	lev, err := logrus.ParseLevel(level)

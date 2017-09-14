@@ -2,4 +2,4 @@
 #
 #  repository: https://github.com/mattn/goveralls
 
-goveralls -repotoken $COVERALLS_TOKEN
+goveralls -v -repotoken $COVERALLS_TOKEN

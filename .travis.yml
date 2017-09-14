@@ -8,11 +8,18 @@ env:
 
 before_script:
   - go get github.com/mattn/goveralls
+  - go get github.com/AlekSi/gocoverutil
+
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y libpcap-dev
 
 go_import_path: github.com/hyeoncheon/goul
 
 script:
   - go build -o goul cmd/goul/main.go
   - ls -l goul
-  - goveralls -service=travis-ci
+  - ./test-gocover.sh
+  - go test ./... -v
+  - goveralls -v -service=travis-ci
 

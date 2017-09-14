@@ -62,6 +62,9 @@ func NewNetwork(addr string, port int) (*Net, error) {
 					} else {
 						n.log("client connected from ", n.conn.RemoteAddr())
 					}
+				} else {
+					n.log("listener closed. return.")
+					return
 				}
 			}
 		}()

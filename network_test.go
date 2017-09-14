@@ -14,7 +14,7 @@ func Test_Net_10_ClientServerNormal(t *testing.T) {
 	r := require.New(t)
 	data := "Test Data"
 
-	cmd := make(chan int)
+	cmd := make(chan int, 10)
 	in := make(chan goul.Item)
 	out := make(chan goul.Item)
 
@@ -29,21 +29,14 @@ func Test_Net_10_ClientServerNormal(t *testing.T) {
 	go svr.Writer(in)
 	time.Sleep(3 * time.Second)
 
-	exitcmd := make(chan int)
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
 				fmt.Println("panic but recovered")
-				exitcmd <- 1
+				return
 			}
 		}()
-
-		for {
-			select {
-			case <-exitcmd:
-				return
-			default:
-			}
+		for i := 0; i < 100; i++ {
 			in <- packet
 			time.Sleep(200 * time.Millisecond)
 		}
@@ -66,14 +59,17 @@ func Test_Net_10_ClientServerNormal(t *testing.T) {
 		result = <-out
 	}
 	cmd <- goul.ComInterrupt
+
+	for ok := true; ok; {
+		result, ok = <-out
+	}
 	time.Sleep(1 * time.Second)
 
 	r.Equal(false, cli.InLoop())
 	r.Error(cli.GetError())
 	r.Equal(goul.ErrPipeInterrupted, cli.GetError().Error())
 
-	ok := true
-	for ok {
+	for ok := true; ok; {
 		result, ok = <-out
 	}
 

@@ -1,0 +1,18 @@
+language: go
+
+go:
+  - 1.8.x
+
+env:
+  CODECLIMATE_REPO_TOKEN: 9311a4b76692580fa889c7d2476a621b41f7ffb5554b8dabc5e818e572d0602c
+
+before_script:
+  - go get github.com/mattn/goveralls
+
+go_import_path: github.com/hyeoncheon/goul
+
+script:
+  - go build -o goul cmd/goul/main.go
+  - ls -l goul
+  - goveralls -service=travis-ci
+

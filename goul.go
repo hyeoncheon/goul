@@ -13,37 +13,18 @@ const (
 	NAME         = "Goul"
 	ComInterrupt = 2
 
-	ErrCannotSetFilter  = "cannot set filter"
-	ErrNoReaderOrWriter = "no reader or writer"
+	ItemTypeUnknown   = "unknown"
+	ItemTypeRawPacket = "rawpacket"
+
+	ErrPipeInterrupted        = "pipe interrupted"
+	ErrPipeInputClosed        = "input channel closed"
+	ErrPipeOutputClosed       = "output channel closed"
+	ErrNetworkReadHeader      = "could not read header from network"
+	ErrNetworkReadChunk       = "could not read chunk from network"
+	ErrNetworkConnectionReset = "connection reset"
+	ErrCannotSetFilter        = "could not set filter"
+	ErrNoReaderOrWriter       = "no reader or writer"
 )
-
-//** types for goul, items ------------------------------------------
-
-// Item is an interface for passing data between pipes.
-type Item interface {
-	String() string
-	Data() []byte
-}
-
-//** type for goul, pipeline functions ------------------------------
-
-// PacketPipe is an interface for the packet/data processing pipe
-type PacketPipe interface {
-	Pipe(in, out chan Item)
-	Reverse(in, out chan Item)
-}
-
-// Reader is an interface for the reader pipe
-type Reader interface {
-	SetLogger(logger Logger) error
-	Reader(in chan int, out chan Item)
-}
-
-// Writer is an interface for the writer pipe
-type Writer interface {
-	SetLogger(logger Logger) error
-	Writer(in chan Item)
-}
 
 // Goul is base structure of this masul goul (magic mirror).
 type Goul struct {
@@ -58,6 +39,7 @@ type Goul struct {
 	isTest     bool
 	isReceiver bool
 	err        error
+	inLoop     bool
 	logger     Logger
 
 	//	reader func(in chan int, out chan gopacket.Packet)
@@ -107,7 +89,8 @@ func (g *Goul) Close() {
 // then run writer.
 func (g *Goul) Run() error {
 	if g.reader == nil || g.writer == nil {
-		return errors.New(ErrNoReaderOrWriter)
+		g.err = errors.New(ErrNoReaderOrWriter)
+		return g.err
 	}
 	ch := g.ExecReader()
 	for _, pipe := range g.pipes {
@@ -195,30 +178,44 @@ func (g *Goul) logf(format string, args ...interface{}) {
 
 //** tap methods... -------------------------------------------------
 
+// InLoop implements goul.PacketPipe interface
+func (g *Goul) InLoop() bool {
+	return g.inLoop
+}
+
+// GetError implements Writer/Reader interface
+func (g *Goul) GetError() error {
+	return g.err
+}
+
 // Reader implements Reader interface (wrapper)
 func (g *Goul) Reader(cmd chan int, out chan Item) {
-	g.Capture(cmd, out)
+	err := g.Capture(cmd, out)
+	if err != nil {
+		g.logger.Error("could not start capture: ", err)
+	}
 }
 
 // Capture is a device packet reader which used as reader when capturer mode.
-func (g *Goul) Capture(cmd chan int, out chan Item) {
+func (g *Goul) Capture(cmd chan int, out chan Item) error {
 	defer close(out)
 
 	if g.handle == nil && g.inactive != nil {
 		g.log("capture: not activated. activating...")
 		g.handle, g.err = g.inactive.Activate()
 		if g.err != nil {
-			g.log("cannot activate handler: ", g.err)
-			return
+			g.logger.Error("cannot activate handler: ", g.err)
+			return g.err
 		}
 		defer g.handle.Close()
 	}
 	if g.err = g.handle.SetBPFFilter(g.filter); g.err != nil {
 		g.log("cannot set filter: ", g.err)
-		return
+		return g.err
 	}
 
 	packetSource := gopacket.NewPacketSource(g.handle, g.handle.LinkType())
+	g.inLoop = true
 	g.log("capturing started...")
 	for {
 		select {
@@ -226,7 +223,9 @@ func (g *Goul) Capture(cmd chan int, out chan Item) {
 			switch command {
 			case ComInterrupt:
 				g.log("shutting down capturing...")
-				return
+				g.err = errors.New(ErrPipeInterrupted)
+				g.inLoop = false
+				return nil
 			}
 		case packet := <-packetSource.Packets():
 			out <- packet
@@ -242,9 +241,11 @@ func (g *Goul) Writer(in chan Item) {
 		g.log("dummy writer ready...")
 
 		var count int64
+		g.inLoop = true
 		for range in {
 			count++
 		}
+		g.inLoop = false
 		g.logf("dummy writer counts total %v packets. exit.", count)
 	} else {
 		// it's real writer. yes.
@@ -264,10 +265,12 @@ func (g *Goul) Inject(in chan Item) {
 		defer g.handle.Close()
 	}
 
+	g.inLoop = true
 	g.log("injection started...")
 	for item := range in {
 		if p, ok := item.(gopacket.Packet); ok {
 			g.handle.WritePacketData(p.Data())
 		}
 	}
+	g.inLoop = false
 }

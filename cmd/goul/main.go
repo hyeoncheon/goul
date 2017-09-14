@@ -10,7 +10,6 @@ import (
 	getopt "github.com/pborman/getopt/v2"
 
 	"github.com/hyeoncheon/goul"
-	"github.com/hyeoncheon/goul/transport"
 )
 
 // Constants
@@ -63,7 +62,7 @@ func main() {
 	}
 
 	//* setup network module
-	net, err := transport.New(opts.addr, opts.port)
+	net, err := goul.NewNetwork(opts.addr, opts.port)
 	if net == nil || err != nil {
 		logger.Error("could not prepare the network connection! ", err)
 		return

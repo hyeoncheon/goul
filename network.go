@@ -1,17 +1,15 @@
-package transport
+package goul
 
 import (
 	"bufio"
 	"encoding/binary"
+	"errors"
 	"net"
 	"strconv"
 	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"github.com/hyeoncheon/goul/pipes"
-
-	"github.com/hyeoncheon/goul"
 )
 
 // constants
@@ -24,29 +22,31 @@ const (
 type Net struct {
 	address string
 	err     error
-	logger  goul.Logger
+	inLoop  bool
+	logger  Logger
 
-	conn    net.Conn
-	wBuffer *bufio.Writer
-	rBuffer *bufio.Reader
+	listener net.Listener
+	conn     net.Conn
+	wBuffer  *bufio.Writer
+	rBuffer  *bufio.Reader
 }
 
-// New creates a new instance of Net and setup network connection.
+// NewNetwork creates a new instance of Net and setup network connection.
 // If parameter `addr` is not given, it act as a server and make a listener
 // as a separated goroutine. Otherwise it connect to the server on given
 // address before return.
 // Note that, server does not mean a receiver. the client/server role and
 // sender/receiver role is orthogonal.
-func New(addr string, port int) (*Net, error) {
+func NewNetwork(addr string, port int) (*Net, error) {
 	n := &Net{
 		address: addr + ":" + strconv.Itoa(port),
 	}
 
 	if addr == "" { // if addr is blank, run as server
 		n.logf("in server mode. starting listener on %v...", n.address)
-		listener, err := net.Listen("tcp", n.address)
-		if listener == nil || err != nil {
-			return nil, err
+		n.listener, n.err = net.Listen("tcp", n.address)
+		if n.listener == nil || n.err != nil {
+			return nil, n.err
 		}
 
 		go func() {
@@ -55,11 +55,14 @@ func New(addr string, port int) (*Net, error) {
 					time.Sleep(10 * time.Millisecond)
 					continue
 				}
-				n.conn, n.err = listener.Accept()
-				if n.conn == nil {
-					n.log("cannot accept: ", err)
+				if n.listener != nil {
+					n.conn, n.err = n.listener.Accept()
+					if n.conn == nil {
+						n.log("cannot accept: ", n.err)
+					} else {
+						n.log("client connected from ", n.conn.RemoteAddr())
+					}
 				}
-				n.log("client connected from ", n.conn.RemoteAddr())
 			}
 		}()
 	} else {
@@ -75,14 +78,32 @@ func New(addr string, port int) (*Net, error) {
 // Close clean up the resources
 func (n *Net) Close() {
 	n.log("about to clean up...")
-	if n.conn != nil {
-		n.log("closing...")
-		n.conn.Close()
+	if n.listener != nil {
+		n.log("closing listener...")
+		n.listener.Close()
+		n.listener = nil
 	}
+	if n.conn != nil {
+		n.log("closing connection...")
+		n.conn.Close()
+		n.conn = nil
+	}
+	n.rBuffer = nil
+	n.wBuffer = nil
+}
+
+// InLoop implements goul.PacketPipe interface
+func (n *Net) InLoop() bool {
+	return n.inLoop
+}
+
+// GetError implements Reader/Writer interface
+func (n *Net) GetError() error {
+	return n.err
 }
 
 // Reader implements Reader interface
-func (n *Net) Reader(cmd chan int, out chan goul.Item) {
+func (n *Net) Reader(cmd chan int, out chan Item) {
 	defer close(out)
 	n.log("reader ready...")
 
@@ -90,8 +111,10 @@ func (n *Net) Reader(cmd chan int, out chan goul.Item) {
 		select {
 		case command := <-cmd:
 			switch command {
-			case goul.ComInterrupt:
+			case ComInterrupt:
 				n.log("shutdown receiving...")
+				n.inLoop = false
+				n.err = errors.New(ErrPipeInterrupted)
 				return
 			}
 		default: // for unblock from the command channel
@@ -107,6 +130,8 @@ func (n *Net) Reader(cmd chan int, out chan goul.Item) {
 					i++
 				} else {
 					n.log("oops! read error ", err)
+					n.inLoop = false
+					n.err = errors.New(ErrNetworkReadHeader)
 					return
 				}
 			}
@@ -119,7 +144,9 @@ func (n *Net) Reader(cmd chan int, out chan goul.Item) {
 				cnt, err := n.rBuffer.Read(chunk)
 				if err != nil {
 					n.log("ERROR get chunk: ", err)
-					break
+					n.err = errors.New(ErrNetworkReadChunk)
+					n.inLoop = false
+					return
 				}
 				data = append(data, chunk[0:cnt]...)
 				remind -= cnt
@@ -136,40 +163,54 @@ func (n *Net) Reader(cmd chan int, out chan goul.Item) {
 			if packet, ok := p.(gopacket.Packet); ok {
 				out <- packet
 			} else {
-				out <- &pipes.ItemGeneric{Meta: "received raw", DATA: data}
+				out <- &ItemGeneric{Meta: ItemTypeUnknown, DATA: data}
 			}
 		} else if n.conn != nil {
 			n.rBuffer = bufio.NewReader(n.conn)
+			n.inLoop = true
 			n.log("reading started!")
+		} else {
+			time.Sleep(50 * time.Millisecond) // no conn but wait. WHY?
 		}
 	}
 }
 
 // Writer implements Writer interface
-func (n *Net) Writer(in chan goul.Item) {
+func (n *Net) Writer(in chan Item) {
 	n.log("writer ready...")
 
 	header := make([]byte, 2)
-	for item := range in {
-		if n.wBuffer != nil {
-			data := item.Data()
-			binary.BigEndian.PutUint16(header, uint16(len(data)))
-
-			if _, err := n.wBuffer.Write(header); err != nil {
-				n.resetConnection(err)
-			} else if _, err := n.wBuffer.Write(data); err != nil {
-				n.resetConnection(err)
-			} else if err := n.wBuffer.Flush(); err != nil {
-				n.resetConnection(err)
-			} else {
-				n.log("sent ", len(data))
+	for {
+		select {
+		case item, ok := <-in:
+			if !ok {
+				n.inLoop = false
+				n.err = errors.New(ErrPipeInputClosed)
+				n.log("could not read channel. writer exit")
+				return
 			}
-		} else if n.conn != nil {
-			n.wBuffer = bufio.NewWriter(n.conn)
-			n.log("writing started!")
+			if n.wBuffer != nil {
+				data := item.Data()
+				binary.BigEndian.PutUint16(header, uint16(len(data)))
+
+				if _, err := n.wBuffer.Write(header); err != nil {
+					n.resetConnection(err)
+				} else if _, err := n.wBuffer.Write(data); err != nil {
+					n.resetConnection(err)
+				} else if err := n.wBuffer.Flush(); err != nil {
+					n.resetConnection(err)
+				} else {
+					n.log("sent ", len(data))
+				}
+			} else if n.conn != nil {
+				n.wBuffer = bufio.NewWriter(n.conn)
+				n.inLoop = true
+				n.log("writing started!")
+			}
+		default:
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
-	n.log("writer exit.")
 }
 
 func (n *Net) resetConnection(err error) {
@@ -180,13 +221,16 @@ func (n *Net) resetConnection(err error) {
 	n.conn.Close()
 	n.conn = nil
 	n.wBuffer = nil
+	n.inLoop = false
+	n.err = errors.New(ErrNetworkConnectionReset)
 	n.log("connection released!")
+
 }
 
 //** logging... -----------------------------------------------------
 
 // SetLogger sets logger for the goul instance.
-func (n *Net) SetLogger(l goul.Logger) error {
+func (n *Net) SetLogger(l Logger) error {
 	n.logger = l
 	return nil
 }

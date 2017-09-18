@@ -1,6 +1,10 @@
 package goul
 
 import (
+	"fmt"
+	"strings"
+
+	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 )
 
@@ -38,4 +42,34 @@ func NewLogger(level string) Logger {
 		logger.SetLevel(lev)
 	}
 	return logger
+}
+
+// Error ...
+func Error(logger Logger, module, fmt string, args ...interface{}) {
+	if logger != nil {
+		module = color.YellowString(module)
+		logger.Errorf("["+module+"] "+fmt, args...)
+	}
+}
+
+// Log ...
+func Log(logger Logger, module, format string, args ...interface{}) {
+	if logger != nil {
+		message := fmt.Sprintf("["+module+"] "+format, args...)
+		switch {
+		case strings.Contains(message, "close"):
+			message = color.RedString(message)
+		case strings.Contains(message, "exit"):
+			message = color.RedString(message)
+		case strings.Contains(message, "READ"):
+			message = color.GreenString(message)
+		case strings.Contains(message, "start"):
+			message = color.GreenString(message)
+		case strings.Contains(message, "work"):
+			message = color.BlueString(message)
+		default:
+			message = color.MagentaString(message)
+		}
+		logger.Debug(message)
+	}
 }

@@ -13,6 +13,7 @@ type Adapter interface {
 	CommonMixin
 	Write(in chan Item, message Message) (out chan Item, err error)
 	Read(in chan Item, message Message) (out chan Item, err error)
+	Close() error
 }
 
 //** Base Implementation
@@ -29,4 +30,9 @@ func (a *BaseAdapter) Read(in chan Item, message Message) (chan Item, error) {
 
 func (a *BaseAdapter) Write(in chan Item, message Message) (chan Item, error) {
 	return nil, errors.New(ErrAdapterWriteNotImplemented)
+}
+
+// Close implements Adapter interface
+func (a *BaseAdapter) Close() error {
+	return nil
 }

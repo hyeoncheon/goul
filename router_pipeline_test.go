@@ -2,6 +2,7 @@ package goul_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/hyeoncheon/goul"
 	"github.com/hyeoncheon/goul/adapters"
@@ -14,9 +15,14 @@ func Test_Pipeline_1_Functions(t *testing.T) {
 	var router goul.Router
 	router = &goul.Pipeline{Router: &goul.BaseRouter{}}
 
+	reader := &adapters.DummyAdapter{ID: "R-----", Adapter: &goul.BaseAdapter{}}
+	defer reader.Close()
+	writer := &adapters.DummyAdapter{ID: "-----W", Adapter: &goul.BaseAdapter{}}
+	defer writer.Close()
+
 	router.SetLogger(goul.NewLogger("debug"))
-	router.SetReader(&adapters.DummyAdapter{ID: "R-----", Adapter: &goul.BaseAdapter{}})
-	router.SetWriter(&adapters.DummyAdapter{ID: "-----W", Adapter: &goul.BaseAdapter{}})
+	router.SetReader(reader)
+	router.SetWriter(writer)
 	router.AddPipe(&pipes.DummyPipe{ID: "-C----", Pipe: &goul.BasePipe{Mode: goul.ModeConverter}})
 	router.AddPipe(&pipes.DummyPipe{ID: "----R-", Pipe: &goul.BasePipe{Mode: goul.ModeReverter}})
 
@@ -25,6 +31,7 @@ func Test_Pipeline_1_Functions(t *testing.T) {
 	r.NotNil(control)
 	r.NotNil(done)
 
+	time.Sleep(1 * time.Second)
 	close(control)
 	message := <-done
 	r.Equal("message", message.String())

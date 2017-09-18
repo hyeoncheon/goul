@@ -1,5 +1,11 @@
 package goul
 
+// constants...
+const (
+	ItemTypeUnknown   = "unknown"
+	ItemTypeRawPacket = "rawpacket"
+)
+
 //** types for goul, items ------------------------------------------
 
 // Item is an interface for passing data between pipes.

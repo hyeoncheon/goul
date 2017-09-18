@@ -13,9 +13,6 @@ const (
 	NAME         = "Goul"
 	ComInterrupt = 2
 
-	ItemTypeUnknown   = "unknown"
-	ItemTypeRawPacket = "rawpacket"
-
 	ErrPipeInterrupted        = "pipe interrupted"
 	ErrPipeInputClosed        = "input channel closed"
 	ErrPipeOutputClosed       = "output channel closed"

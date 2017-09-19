@@ -3,105 +3,57 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 
 	getopt "github.com/pborman/getopt/v2"
 
 	"github.com/hyeoncheon/goul"
 )
 
-// Constants
+// constants...
 const (
-	PROGRAM = "Goul"
-	VERSION = "0.1"
+	PROGRAM = "goul"
+	VERSION = "0.2"
 	PORT    = 6001
 )
 
 // Options is a structure for running configuration
 type Options struct {
-	isTest     bool
-	isDebug    bool
-	isReceiver bool
-	addr       string
-	port       int
-	device     string
-	filter     string
-	logger     goul.Logger
+	isTest   bool
+	isDebug  bool
+	isServer bool
+	addr     string
+	port     int
+	device   string
+	filter   string
 }
 
 func main() {
+	var err error
+
 	//* initiate with command line arguments...
 	opts := getOptions()
 	if opts == nil {
 		os.Exit(1)
 	}
 
-	logLevel := "info"
-	if opts.isDebug {
-		logLevel = "debug"
-	}
-	logger := goul.NewLogger(logLevel)
-
-	if opts.filter != "" {
-		logger.Infof("user defined filter: <%v>", opts.filter)
-	}
-
-	chanCmd := make(chan int, 1)
-	gl, err := goul.New(opts.device, opts.isReceiver, chanCmd, opts.isDebug)
-	if err != nil {
-		logger.Error("could not make a goul session! ", err)
-	}
-	defer gl.Close()
-
-	gl.SetLogger(logger)
-	gl.SetOptions(false, 1600, 1)
-	if opts.filter != "" {
-		gl.SetFilter(opts.filter)
-	}
-
-	//* setup network module
-	net, err := goul.NewNetwork(opts.addr, opts.port)
-	if net == nil || err != nil {
-		logger.Error("could not prepare the network connection! ", err)
-		return
-	}
-	defer net.Close()
-
-	net.SetLogger(logger)
-
-	if opts.isReceiver {
-		gl.SetReader(net)
+	if opts.isServer {
+		err = server(opts)
 	} else {
-		gl.SetWriter(net)
+		err = client(opts)
 	}
-
-	//* build reader/writer/processor pipeline
-	//gl.AddPipe(&pipes.PacketPrinter{})
-	//gl.AddPipe(&pipes.CompressGZip{})
-	//gl.AddPipe(&pipes.CompressZLib{})
-	//gl.AddPipe(&pipes.DataCounter{})
-	//gl.SetWriter(&pipes.NullWriter{})
-
-	//* register singnal handlers and command pipiline...
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt)
-	go func() {
-		for {
-			s := <-sig
-			logger.Debug("signal caught: ", s)
-			switch s {
-			case syscall.SIGINT:
-				logger.Debug("interrupted! exit gracefully...")
-				chanCmd <- goul.ComInterrupt
-			}
-		}
-	}()
-
-	if err := gl.Run(); err != nil {
-		logger.Error("Error: ", err)
+	if err != nil {
+		os.Exit(2)
 	}
+}
+
+//** utilities...
+
+func logger(opts *Options) goul.Logger {
+	if opts.isDebug {
+		return goul.NewLogger("debug")
+	}
+	return goul.NewLogger("info")
 }
 
 //** getopts...
@@ -113,21 +65,21 @@ func getOptions() *Options {
 	version := false
 
 	opts := &Options{
-		isTest:     false,
-		isDebug:    false,
-		isReceiver: false,
-		addr:       "",
-		port:       PORT,
-		device:     "eth0",
+		isTest:   false,
+		isDebug:  false,
+		isServer: false,
+		addr:     "",
+		port:     PORT,
+		device:   "eth0",
 	}
 	getopt.SetParameters("filters ...")
 	getopt.FlagLong(&help, "help", 'h', "help")
 	getopt.FlagLong(&list, "list", 'l', "list network devices")
 	getopt.FlagLong(&opts.isTest, "test", 't', "test mode (no injection)")
 	getopt.FlagLong(&opts.isDebug, "debug", 'D', "debugging mode (print log messages)")
-	getopt.FlagLong(&opts.isReceiver, "recv", 'r', "run as receiver")
+	getopt.FlagLong(&opts.isServer, "server", 's', "run as receiver")
 	getopt.FlagLong(&opts.addr, "addr", 'a', "address to connect (for client)")
-	getopt.FlagLong(&opts.port, "port", 'p', "address to connect (default is 6001)")
+	getopt.FlagLong(&opts.port, "port", 'p', "tcp port number (default is 6001)")
 	getopt.FlagLong(&opts.device, "dev", 'd', "network interface to read/write")
 	getopt.FlagLong(&version, "version", 'v', "show version of goul")
 

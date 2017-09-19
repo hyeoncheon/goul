@@ -3,11 +3,10 @@ package adapters_test
 import (
 	"testing"
 
-	"github.com/hyeoncheon/goul"
-
-	"github.com/hyeoncheon/goul/adapters"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/hyeoncheon/goul"
+	"github.com/hyeoncheon/goul/adapters"
 )
 
 func Test_DeviceAdapter_1_NormalFlow(t *testing.T) {
@@ -32,14 +31,12 @@ func Test_DeviceAdapter_1_NormalFlow(t *testing.T) {
 		return
 	}()
 
-	out, err := adapter.Read(in, nil)
-	r.NoError(err)
-	<-out
+	_, err = adapter.Read(in, nil)
+	r.EqualError(err, adapters.ErrCouldNotActivate) // permission denied
 	r.Contains(adapter.GetError().Error(), "Permission Denied")
 
-	out, err = adapter.Write(in, nil)
-	r.NoError(err)
-	<-out
+	_, err = adapter.Write(in, nil)
+	r.EqualError(err, adapters.ErrCouldNotActivate) // permission denied
 	r.Contains(adapter.GetError().Error(), "Permission Denied")
 
 	adapter.Close()
@@ -70,15 +67,15 @@ func Test_DeviceAdapter_3_Uninitialized(t *testing.T) {
 	r.EqualError(err, adapters.ErrDeviceAdapterNotInitialized)
 
 	in := make(chan goul.Item)
-	out, err := adapter.Read(in, nil)
-	<-out
+	_, err = adapter.Read(in, nil)
+	r.NoError(err)
 
 	//! using DeviceAdapter with BaseAdapter but not initialize.
 	adapter = &adapters.DeviceAdapter{Adapter: &goul.BaseAdapter{}}
 	err = adapter.SetOptions(false, 1500, 1)
 	r.EqualError(err, adapters.ErrDeviceAdapterNotInitialized)
 
-	out, err = adapter.Read(in, nil)
-	<-out
+	_, err = adapter.Read(in, nil)
+	r.Error(err)
 	r.EqualError(adapter.GetError(), adapters.ErrDeviceAdapterNotInitialized)
 }

@@ -119,10 +119,28 @@ func Test_Network_22_Close(t *testing.T) {
 	reader.Close()
 }
 
+func Test_Network_23_Respawn(t *testing.T) {
+	r := require.New(t)
+
+	c, d := debugServer(r)
+
+	reader, err := adapters.NewNetwork("", 6006)
+	r.NoError(err)
+	server := &goul.BaseRouter{}
+	server.SetReader(reader)
+	server.SetWriter(&GeneratorAdapter{ID: "  --SW", Adapter: &goul.BaseAdapter{}})
+	_, _, err = server.Run()
+	r.Error(err)
+	r.Contains(err.Error(), "already in use")
+
+	close(c)
+	<-d
+}
+
 //** utilities
 
 func debugServer(r *require.Assertions) (control, out chan goul.Item) {
-	reader, err := adapters.NewNetwork("", 6001)
+	reader, err := adapters.NewNetwork("", 6006)
 	reader.ID = "  ->SR"
 	r.NoError(err)
 	server := &goul.BaseRouter{}
@@ -136,7 +154,7 @@ func debugServer(r *require.Assertions) (control, out chan goul.Item) {
 }
 
 func generatorClient(r *require.Assertions, name string) (control, out chan goul.Item) {
-	writer, err := adapters.NewNetwork("localhost", 6001)
+	writer, err := adapters.NewNetwork("localhost", 6006)
 	writer.ID = name + "->  "
 	r.NoError(err)
 	client := &goul.BaseRouter{}

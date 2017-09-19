@@ -14,14 +14,14 @@ import (
 
 // constants...
 const (
-	defaultID          = "PcapRD"
-	defaultSnapLen     = 1600
-	defaultPromiscuous = false
-	defaultTimeout     = 1
-	defaultFilter      = "ip"
+	defaultDeviceAdapterID = "cap"
+	defaultSnapLen         = 1600
+	defaultPromiscuous     = false
+	defaultTimeout         = 1
+	defaultFilter          = "ip"
 
-	ErrDeviceAdapterNotInitialized = "DeviceAdapterNotInitialized"
-	ErrCouldNotActivate            = "CouldNotActivate"
+	ErrDeviceAdapterNotInitialized = "device adapter not initialized"
+	ErrCouldNotActivate            = "could not activate capture interface"
 )
 
 // DeviceAdapter is an adapter for the network device interfacing.
@@ -48,31 +48,43 @@ type DeviceAdapter struct {
 
 // Read implements interface Adapter
 func (a *DeviceAdapter) Read(in chan goul.Item, message goul.Message) (chan goul.Item, error) {
+	defer a.recover()
+
+	a.err = a.activate()
+	if a.err != nil {
+		a.SetError(a.err)
+		goul.Error(a.GetLogger(), a.ID, "%v: %v", ErrCouldNotActivate, a.err)
+		return nil, errors.New(ErrCouldNotActivate)
+	}
+
+	goul.Log(a.GetLogger(), a.ID, "setting filter <%v>...", a.filter)
+	if a.err = a.handle.SetBPFFilter(a.filter); a.err != nil {
+		a.SetError(a.err)
+		goul.Error(a.GetLogger(), a.ID, "%v: %v", ErrCouldNotActivate, a.err)
+		return nil, errors.New(ErrCouldNotActivate)
+	}
 	return goul.Launch(a.reader, in, message)
 }
 
 // Write implements interface Adapter
 func (a *DeviceAdapter) Write(in chan goul.Item, message goul.Message) (chan goul.Item, error) {
+	defer a.recover()
+
+	a.err = a.activate()
+	if a.err != nil {
+		a.SetError(a.err)
+		goul.Error(a.GetLogger(), a.ID, "%v: %v", ErrCouldNotActivate, a.err)
+		return nil, errors.New(ErrCouldNotActivate)
+	}
+
 	return goul.Launch(a.writer, in, message)
 }
 
 // reader read packets from device and push it into output channel.
 func (a *DeviceAdapter) reader(in, out chan goul.Item, message goul.Message) {
 	defer close(out)
-	defer a.recover()
 	defer goul.Log(a.GetLogger(), a.ID, "exit")
 
-	a.err = a.activate()
-	if a.err != nil {
-		a.SetError(a.err)
-		goul.Error(a.GetLogger(), a.ID, "activation error: %v", a.err)
-		return
-	}
-
-	if a.err = a.handle.SetBPFFilter(a.filter); a.err != nil {
-		a.err = errors.New(ErrCouldNotActivate + " " + a.err.Error())
-		return
-	}
 	packetSource := gopacket.NewPacketSource(a.handle, a.handle.LinkType())
 	packetChannel := packetSource.Packets()
 
@@ -95,15 +107,7 @@ func (a *DeviceAdapter) reader(in, out chan goul.Item, message goul.Message) {
 // writer write out the packets from input channel
 func (a *DeviceAdapter) writer(in, out chan goul.Item, message goul.Message) {
 	defer close(out)
-	defer a.recover()
 	defer goul.Log(a.GetLogger(), a.ID, "exit")
-
-	a.err = a.activate()
-	if a.err != nil {
-		a.SetError(a.err)
-		goul.Error(a.GetLogger(), a.ID, "activation error: %v", a.err)
-		return
-	}
 
 	goul.Log(a.GetLogger(), a.ID, "writer in looping...")
 	for item := range in {
@@ -118,7 +122,7 @@ func (a *DeviceAdapter) writer(in, out chan goul.Item, message goul.Message) {
 // NewDevice returns new device adapter.
 func NewDevice(dev string) (*DeviceAdapter, error) {
 	a := &DeviceAdapter{
-		ID:          defaultID,
+		ID:          defaultDeviceAdapterID,
 		device:      dev,
 		snaplen:     defaultSnapLen,
 		promiscuous: defaultPromiscuous,
@@ -180,7 +184,6 @@ func (a *DeviceAdapter) activate() error {
 	if a.handle == nil && a.inactiveHandle != nil {
 		a.handle, a.err = a.inactiveHandle.Activate()
 		if a.err != nil {
-			a.err = errors.New(ErrCouldNotActivate + " " + a.err.Error())
 			return a.err
 		}
 	}

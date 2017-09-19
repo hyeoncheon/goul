@@ -39,7 +39,7 @@ func (r *Pipeline) Run() (chan Item, chan Item, error) {
 		return nil, nil, r.err
 	}
 
-	Log(r.getLogger(), "PipeRT", "started ---------------------------------")
+	Log(r.getLogger(), "router", "started ---------------------------------")
 	return cntl, tx, nil
 }
 

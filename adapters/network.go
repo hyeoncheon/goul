@@ -10,11 +10,15 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+
 	"github.com/hyeoncheon/goul"
 )
 
 // constants...
-const ()
+const (
+	ErrNetworkWriterNotSupported = "writer not supported for server"
+	ErrNetworkReaderNotSupported = "reader not supported for client"
+)
 
 // NetworkAdapter is normal mode networking adapter.
 type NetworkAdapter struct {
@@ -36,6 +40,8 @@ func (a *NetworkAdapter) Read(ctrl chan goul.Item, message goul.Message) (chan g
 			return nil, a.err
 		}
 		go a.listen(ctrl, out)
+	} else {
+		return nil, errors.New(ErrNetworkReaderNotSupported)
 	}
 	return out, nil
 }
@@ -50,6 +56,8 @@ func (a *NetworkAdapter) Write(in chan goul.Item, message goul.Message) (chan go
 			return nil, a.err
 		}
 		go a.writer(in, done, conn)
+	} else {
+		return nil, errors.New(ErrNetworkWriterNotSupported)
 	}
 	return done, nil
 }

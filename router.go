@@ -116,3 +116,11 @@ func (r *BaseRouter) SetLogger(logger Logger) error {
 func (r *BaseRouter) getLogger() Logger {
 	return r.logger
 }
+
+// Messages is a map for system messages.
+var Messages = map[string]*ItemGeneric{
+	"closed": &ItemGeneric{
+		Meta: "message",
+		DATA: []byte("channel closed. done"),
+	},
+}

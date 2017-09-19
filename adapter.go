@@ -11,8 +11,8 @@ const (
 // Adapter is an interface for in/out adapters for pipeline.
 type Adapter interface {
 	CommonMixin
-	Write(in chan Item, message Message) (out chan Item, err error)
-	Read(in chan Item, message Message) (out chan Item, err error)
+	Write(in chan Item, message Message) (done chan Item, err error)
+	Read(ctrl chan Item, message Message) (out chan Item, err error)
 	Close() error
 }
 
@@ -24,7 +24,7 @@ type BaseAdapter struct {
 	ID string
 }
 
-func (a *BaseAdapter) Read(in chan Item, message Message) (chan Item, error) {
+func (a *BaseAdapter) Read(ctrl chan Item, message Message) (chan Item, error) {
 	return nil, errors.New(ErrAdapterReadNotImplemented)
 }
 

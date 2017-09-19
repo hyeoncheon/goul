@@ -55,7 +55,8 @@ func Error(logger Logger, module, fmt string, args ...interface{}) {
 // Log ...
 func Log(logger Logger, module, format string, args ...interface{}) {
 	if logger != nil {
-		message := fmt.Sprintf("["+module+"] "+format, args...)
+		header := fmt.Sprintf("[%v-%03d] ", module, GoID())
+		message := fmt.Sprintf(header+format, args...)
 		switch {
 		case strings.Contains(message, "close"):
 			message = color.RedString(message)

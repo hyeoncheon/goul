@@ -16,7 +16,16 @@ type Pipeline struct {
 }
 
 // Run implements Router
-func (r *Pipeline) Run() (chan Item, chan Item, error) {
+func (r *Pipeline) Run() (ctrl, done chan Item, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "Pipeline#Run recovered from panic!\n")
+			fmt.Fprintf(os.Stderr, "Probably an inheritance problem of pipeline instance.\n")
+			fmt.Fprintf(os.Stderr, "panic: %v\n", r)
+			err = errors.New("panic")
+		}
+	}()
+
 	if r.getReader() == nil || r.getWriter() == nil {
 		return nil, nil, errors.New(ErrRouterNoReaderOrWriter)
 	}

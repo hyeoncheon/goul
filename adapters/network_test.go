@@ -101,6 +101,28 @@ func Test_Network_21_Exceptions(t *testing.T) {
 	r.Contains(err.Error(), "connection refused")
 	err = writer.Close()
 	r.NoError(err)
+
+	//**
+
+	readerWithAddr, err := adapters.NewNetwork("localhost", 6080)
+	r.NoError(err)
+	server = &goul.BaseRouter{}
+	server.SetReader(readerWithAddr)
+	server.SetWriter(&GeneratorAdapter{ID: "  --SW", Adapter: &goul.BaseAdapter{}})
+	_, _, err = server.Run()
+	r.EqualError(err, adapters.ErrNetworkReaderNotSupported)
+	err = readerWithAddr.Close()
+	r.NoError(err)
+
+	writerWithoutAddr, err := adapters.NewNetwork("", 6080)
+	r.NoError(err)
+	client = &goul.BaseRouter{}
+	client.SetReader(&GeneratorAdapter{ID: "    ", Adapter: &goul.BaseAdapter{}})
+	client.SetWriter(writerWithoutAddr)
+	_, _, err = client.Run()
+	r.EqualError(err, adapters.ErrNetworkWriterNotSupported)
+	err = writerWithoutAddr.Close()
+	r.NoError(err)
 }
 
 func Test_Network_22_Close(t *testing.T) {

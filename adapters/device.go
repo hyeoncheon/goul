@@ -48,8 +48,15 @@ type DeviceAdapter struct {
 }
 
 // Read implements interface Adapter
-func (a *DeviceAdapter) Read(in chan goul.Item, message goul.Message) (chan goul.Item, error) {
-	defer a.recover()
+func (a *DeviceAdapter) Read(ctrl chan goul.Item, message goul.Message) (out chan goul.Item, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "DeviceAdapter#Write recovered from panic!\n")
+			fmt.Fprintf(os.Stderr, "Probably an inheritance problem of pipeline instance.\n")
+			fmt.Fprintf(os.Stderr, "panic: %v\n", r)
+			err = errors.New("panic")
+		}
+	}()
 
 	a.err = a.activate()
 	if a.err != nil {
@@ -64,25 +71,35 @@ func (a *DeviceAdapter) Read(in chan goul.Item, message goul.Message) (chan goul
 		goul.Error(a.GetLogger(), a.ID, "%v: %v", ErrCouldNotActivate, a.err)
 		return nil, errors.New(ErrCouldNotActivate)
 	}
-	return goul.Launch(a.reader, in, message)
+	return goul.Launch(a.reader, ctrl, message)
 }
 
 // Write implements interface Adapter
-func (a *DeviceAdapter) Write(in chan goul.Item, message goul.Message) (chan goul.Item, error) {
-	defer a.recover()
+func (a *DeviceAdapter) Write(in chan goul.Item, message goul.Message) (done chan goul.Item, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "DeviceAdapter#Write recovered from panic!\n")
+			fmt.Fprintf(os.Stderr, "Probably an inheritance problem of pipeline instance.\n")
+			fmt.Fprintf(os.Stderr, "panic: %v\n", r)
+			err = errors.New("panic")
+		}
+	}()
 
+	var fn goul.PipeFunction
 	if a.isTest {
-		return goul.Launch(a.dummy, in, message)
+		fn = a.dummy
+		//return goul.Launch(a.dummy, in, message)
+	} else {
+		fn = a.writer
+		a.err = a.activate()
+		if a.err != nil {
+			a.SetError(a.err)
+			goul.Error(a.GetLogger(), a.ID, "%v: %v", ErrCouldNotActivate, a.err)
+			return nil, errors.New(ErrCouldNotActivate)
+		}
 	}
 
-	a.err = a.activate()
-	if a.err != nil {
-		a.SetError(a.err)
-		goul.Error(a.GetLogger(), a.ID, "%v: %v", ErrCouldNotActivate, a.err)
-		return nil, errors.New(ErrCouldNotActivate)
-	}
-
-	return goul.Launch(a.writer, in, message)
+	return goul.Launch(fn, in, message)
 }
 
 // reader read packets from device and push it into output channel.
@@ -94,9 +111,7 @@ func (a *DeviceAdapter) reader(in, out chan goul.Item, message goul.Message) {
 	//? changing the execution order as reversed?
 	time.Sleep(500 * time.Millisecond)
 
-	packetSource := gopacket.NewPacketSource(a.handle, a.handle.LinkType())
-	packetChannel := packetSource.Packets()
-
+	packets := gopacket.NewPacketSource(a.handle, a.handle.LinkType()).Packets()
 	goul.Log(a.GetLogger(), a.ID, "capturing in looping...")
 	for {
 		select {
@@ -105,7 +120,7 @@ func (a *DeviceAdapter) reader(in, out chan goul.Item, message goul.Message) {
 				goul.Log(a.GetLogger(), a.ID, "channel closed")
 				return
 			}
-		case packet := <-packetChannel:
+		case packet := <-packets:
 			out <- packet
 		default: // for non-blocking looping
 			time.Sleep(10 * time.Millisecond)
@@ -134,9 +149,13 @@ func (a *DeviceAdapter) dummy(in, out chan goul.Item, message goul.Message) {
 	defer goul.Log(a.GetLogger(), a.ID, "exit")
 
 	goul.Log(a.GetLogger(), a.ID, "dummy writer in looping...")
+	var count uint64
+	count = 0
 	for range in {
+		count++
 	}
 	goul.Log(a.GetLogger(), a.ID, "channel closed")
+	goul.Log(a.GetLogger(), a.ID, "dummy writer got %v packets", count)
 	out <- &goul.ItemGeneric{Meta: "message", DATA: []byte("channel closed. done")}
 }
 
@@ -157,8 +176,16 @@ func NewDevice(dev string, isTest bool) (*DeviceAdapter, error) {
 }
 
 // Close clean up resources on device adapter.
-func (a *DeviceAdapter) Close() error {
-	defer a.recover()
+func (a *DeviceAdapter) Close() (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "DeviceAdapter#Close recovered from panic!\n")
+			fmt.Fprintf(os.Stderr, "Probably an inheritance problem of pipeline instance.\n")
+			fmt.Fprintf(os.Stderr, "panic: %v\n", r)
+			err = errors.New("panic")
+		}
+	}()
+
 	goul.Log(a.GetLogger(), a.ID, "cleanup...")
 	if a.handle != nil {
 		a.handle.Close()
@@ -170,13 +197,13 @@ func (a *DeviceAdapter) Close() error {
 }
 
 // SetOptions sets capture options to inactive handler.
-func (a *DeviceAdapter) SetOptions(promisc bool, len int, timeout time.Duration) error {
-	defer a.recover()
-
+func (a *DeviceAdapter) SetOptions(promisc bool, len int, timeout time.Duration) (err error) {
 	if a.inactiveHandle == nil {
 		a.err = errors.New(ErrDeviceAdapterNotInitialized)
 		return a.err
 	}
+
+	goul.Log(a.GetLogger(), a.ID, "set timeout/snaplen/promisc: %v/%v/%v", timeout, len, promisc)
 	if a.err = a.inactiveHandle.SetTimeout(timeout * time.Second); a.err != nil {
 		goul.Error(a.GetLogger(), a.ID, "set timeout error: %v", a.err)
 	} else if a.err = a.inactiveHandle.SetSnapLen(len); a.err != nil {
@@ -197,8 +224,6 @@ func (a *DeviceAdapter) SetFilter(filter string) error {
 }
 
 func (a *DeviceAdapter) activate() error {
-	defer a.recover()
-
 	if a.inactiveHandle == nil {
 		a.err = errors.New(ErrDeviceAdapterNotInitialized)
 		return a.err
@@ -211,12 +236,4 @@ func (a *DeviceAdapter) activate() error {
 	}
 	goul.Log(a.GetLogger(), a.ID, "handle initiated: %v", a.handle)
 	return nil
-}
-
-func (a *DeviceAdapter) recover() {
-	if r := recover(); r != nil {
-		fmt.Fprintf(os.Stderr, "DeviceAdapter recovered from panic!\n")
-		fmt.Fprintf(os.Stderr, "Check if NewDevice() is used for creation.\n")
-		fmt.Fprintf(os.Stderr, "panic: %v\n", r)
-	}
 }

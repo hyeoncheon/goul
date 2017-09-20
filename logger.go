@@ -62,8 +62,6 @@ func Log(logger Logger, module, format string, args ...interface{}) {
 			message = color.RedString(message)
 		case strings.Contains(message, "exit"):
 			message = color.RedString(message)
-		case strings.Contains(message, "READ"):
-			message = color.GreenString(message)
 		case strings.Contains(message, "start"):
 			message = color.GreenString(message)
 		case strings.Contains(message, "work"):

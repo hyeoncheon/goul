@@ -77,7 +77,13 @@ func Test_DeviceAdapter_3_Uninitialized(t *testing.T) {
 
 	in := make(chan goul.Item)
 	_, err = adapter.Read(in, nil)
-	r.NoError(err)
+	r.EqualError(err, "panic")
+
+	_, err = adapter.Write(in, nil)
+	r.EqualError(err, "panic")
+
+	err = adapter.Close()
+	r.EqualError(err, "panic")
 
 	//! using DeviceAdapter with BaseAdapter but not initialize.
 	adapter = &adapters.DeviceAdapter{Adapter: &goul.BaseAdapter{}}

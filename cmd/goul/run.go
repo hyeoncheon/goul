@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"os/signal"
 	"syscall"
@@ -9,7 +10,14 @@ import (
 	"github.com/hyeoncheon/goul/adapters"
 )
 
-func run(opts *Options) {
+// constants
+const (
+	ErrCouldNotCreateDeviceReader = "couldn't create new device reader"
+	ErrCouldNotCreateDeviceWriter = "couldn't create new device writer"
+	ErrCouldNotStartTheRouter     = "couldn't start the router"
+)
+
+func run(opts *Options, sigs ...chan os.Signal) error {
 	var err error
 	var router goul.Router
 	router = &goul.Pipeline{Router: &goul.BaseRouter{}}
@@ -25,8 +33,8 @@ func run(opts *Options) {
 		logger.Debugf("initialize device pump on %v...", opts.device)
 		writer, err := adapters.NewDevice(opts.device, opts.isTest)
 		if err != nil {
-			logger.Error("couldn't create new device reader: ", err)
-			return
+			logger.Error(ErrCouldNotCreateDeviceWriter, ": ", err)
+			return errors.New(ErrCouldNotCreateDeviceWriter)
 		}
 		defer reader.Close()
 
@@ -40,8 +48,8 @@ func run(opts *Options) {
 		logger.Debugf("initialize device dump on %v...", opts.device)
 		reader, err := adapters.NewDevice(opts.device, opts.isTest)
 		if err != nil {
-			logger.Error("couldn't create new device reader: ", err)
-			os.Exit(2)
+			logger.Error(ErrCouldNotCreateDeviceReader, ": ", err)
+			return errors.New(ErrCouldNotCreateDeviceReader)
 		}
 		defer reader.Close()
 
@@ -63,12 +71,15 @@ func run(opts *Options) {
 	}
 	control, done, err := router.Run()
 	if err != nil {
-		logger.Error("couldn't start the router: ", err)
-		os.Exit(2)
+		logger.Error(ErrCouldNotStartTheRouter, ": ", err)
+		return errors.New(ErrCouldNotStartTheRouter)
 	}
 
 	//* register singnal handlers and command pipiline...
 	sig := make(chan os.Signal, 1)
+	if len(sigs) > 0 { //! for testing... :-/
+		sig = sigs[0]
+	}
 	signal.Notify(sig, os.Interrupt)
 	go func() {
 		for {
@@ -94,6 +105,7 @@ func run(opts *Options) {
 			close(control)
 		}
 	}
+	return nil
 }
 
 //** utilities...

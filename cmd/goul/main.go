@@ -29,31 +29,11 @@ type Options struct {
 }
 
 func main() {
-	var err error
-
-	//* initiate with command line arguments...
 	opts := getOptions()
 	if opts == nil {
-		os.Exit(1)
+		os.Exit(0)
 	}
-
-	if opts.isServer {
-		err = server(opts)
-	} else {
-		err = client(opts)
-	}
-	if err != nil {
-		os.Exit(2)
-	}
-}
-
-//** utilities...
-
-func logger(opts *Options) goul.Logger {
-	if opts.isDebug {
-		return goul.NewLogger("debug")
-	}
-	return goul.NewLogger("info")
+	run(opts)
 }
 
 //** getopts...
@@ -87,11 +67,11 @@ func getOptions() *Options {
 	opts.filter = strings.Join(getopt.Args(), " ")
 
 	if version {
-		fmt.Println(versionString)
+		fmt.Println(versionString + "-" + buildNumber)
 		return nil
 	}
 	if help {
-		fmt.Println(versionString)
+		fmt.Println(versionString + "-" + buildNumber)
 		fmt.Println(helpMessage)
 		getopt.Usage()
 		return nil
@@ -102,6 +82,8 @@ func getOptions() *Options {
 	}
 	return opts
 }
+
+var buildNumber = "head"
 
 const versionString = PROGRAM + " " + VERSION
 

@@ -85,6 +85,10 @@ func (a *DeviceAdapter) reader(in, out chan goul.Item, message goul.Message) {
 	defer close(out)
 	defer goul.Log(a.GetLogger(), a.ID, "exit")
 
+	// just for dirty timing... it should be run after writer is ready.
+	//? changing the execution order as reversed?
+	time.Sleep(500 * time.Millisecond)
+
 	packetSource := gopacket.NewPacketSource(a.handle, a.handle.LinkType())
 	packetChannel := packetSource.Packets()
 

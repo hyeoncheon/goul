@@ -7,8 +7,9 @@ const (
 	ModeConverter = true
 	ModeReverter  = false
 
-	ErrPipeConvertNotImplemented = "PipeConvertNotImplemented"
-	ErrPipeRevertNotImplemented  = "PipeRevertNotImplemented"
+	ErrPipeConvertNotImplemented = "convert method of pipe not implemented"
+	ErrPipeRevertNotImplemented  = "revert method of pipe not implemented"
+	ErrPipeInputClosed           = "input channel closed"
 )
 
 // Pipe is an interface for pipeline handlers.

@@ -2,7 +2,6 @@ package pipes_test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/hyeoncheon/goul"
 	"github.com/hyeoncheon/goul/pipes"
@@ -10,22 +9,36 @@ import (
 )
 
 func Test_CompressGZip(t *testing.T) {
-	pt := &PacketPipeTest{PacketPipe: &pipes.CompressGZip{}, T: t}
-	pt.Run()
+	pts := &PipeTestSuite{
+		C: &pipes.CompressGZip{Pipe: &goul.BasePipe{Mode: goul.ModeConverter}},
+		R: &pipes.CompressGZip{Pipe: &goul.BasePipe{Mode: goul.ModeReverter}},
+		T: t,
+	}
+	pts.Run()
+
+	ptsda := &PipeTestSuiteDirectAccess{
+		C: &pipes.CompressGZip{},
+		R: &pipes.CompressGZip{},
+		T: t,
+	}
+	ptsda.Run()
 }
 
 func Test_CompressGZip_MalformData(t *testing.T) {
-	pipe := &pipes.CompressGZip{}
-	in := make(chan goul.Item)
-	out := make(chan goul.Item)
+	r := require.New(t)
+	pipe := &pipes.CompressGZip{Pipe: &goul.BasePipe{Mode: goul.ModeConverter}}
 
-	go pipe.Reverse(in, out)
+	in := make(chan goul.Item)
+	out, err := pipe.Revert(in, nil)
+	r.NoError(err)
 
 	in <- &goul.ItemGeneric{Meta: "application/gzip", DATA: []byte{1}}
+	// this will not generate any output.
+	in <- &goul.ItemGeneric{Meta: "dummy data", DATA: []byte{1}}
+	<-out // it means, previous processing also done. (hack for timing)
+	r.Equal(pipes.CouldNotCreateNewZLibReader, pipe.GetError().Error())
 
-	for i := 0; i < 20 && pipe.GetError() == nil; i++ {
-		time.Sleep(100 * time.Millisecond)
-	}
-	require.New(t).Equal("CouldNotCreateNewReader", pipe.GetError().Error())
 	close(in)
+	<-out
+	r.Equal(goul.ErrPipeInputClosed, pipe.GetError().Error())
 }

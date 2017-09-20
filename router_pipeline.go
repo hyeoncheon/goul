@@ -1,6 +1,10 @@
 package goul
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+	"os"
+)
 
 //*** pipeline router -----------------------------------------------
 
@@ -44,7 +48,16 @@ func (r *Pipeline) Run() (chan Item, chan Item, error) {
 }
 
 // AddPipe implements Router
-func (r *Pipeline) AddPipe(pipe Pipe) error {
+func (r *Pipeline) AddPipe(pipe Pipe) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "Pipeline#AddPipe recovered from panic!\n")
+			fmt.Fprintf(os.Stderr, "Probably an inheritance problem of pipeline instance.\n")
+			fmt.Fprintf(os.Stderr, "panic: %v\n", r)
+			err = errors.New("panic")
+		}
+	}()
+
 	pipe.SetLogger(r.getLogger())
 	r.pipes = append(r.pipes, pipe)
 	return nil

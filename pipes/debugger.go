@@ -1,7 +1,9 @@
 package pipes
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/google/gopacket"
@@ -16,12 +18,38 @@ type DebugPipe struct {
 }
 
 // Convert implements interface Pipe/Converter
-func (p *DebugPipe) Convert(in chan goul.Item, message goul.Message) (chan goul.Item, error) {
+func (p *DebugPipe) Convert(in chan goul.Item, message goul.Message) (out chan goul.Item, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "DebugPipe#Conver recovered from panic!\n")
+			fmt.Fprintf(os.Stderr, "Probably an inheritance problem of pipeline instance.\n")
+			fmt.Fprintf(os.Stderr, "panic: %v\n", r)
+			err = errors.New("panic")
+		}
+	}()
+
+	if p.ID == "" {
+		p.ID = "dbg-convert"
+	}
+	p.SetError(nil)
 	return goul.Launch(p.converter, in, message)
 }
 
 // Revert implements interface Pipe/Reverter
-func (p *DebugPipe) Revert(in chan goul.Item, message goul.Message) (chan goul.Item, error) {
+func (p *DebugPipe) Revert(in chan goul.Item, message goul.Message) (out chan goul.Item, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "DebugPipe#Revert recovered from panic!\n")
+			fmt.Fprintf(os.Stderr, "Probably an inheritance problem of pipeline instance.\n")
+			fmt.Fprintf(os.Stderr, "panic: %v\n", r)
+			err = errors.New("panic")
+		}
+	}()
+
+	if p.ID == "" {
+		p.ID = "dbg-revert"
+	}
+	p.SetError(nil)
 	return goul.Launch(p.reverter, in, message)
 }
 
@@ -38,6 +66,7 @@ func (p *DebugPipe) converter(in, out chan goul.Item, message goul.Message) {
 		select {
 		case item, ok := <-in:
 			if !ok {
+				p.SetError(errors.New(goul.ErrPipeInputClosed))
 				goul.Log(p.GetLogger(), p.ID, "channel closed")
 				return
 			}
@@ -74,6 +103,7 @@ func (p *DebugPipe) reverter(in, out chan goul.Item, message goul.Message) {
 		out <- item
 		goul.Log(p.GetLogger(), p.ID, "%4d, size: %v", i, len(item.Data()))
 	}
+	p.SetError(errors.New(goul.ErrPipeInputClosed))
 	goul.Log(p.GetLogger(), p.ID, "channel closed")
 	goul.Log(p.GetLogger(), p.ID, "counts %d items", i)
 }

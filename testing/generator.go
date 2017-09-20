@@ -2,6 +2,7 @@ package testing
 
 import (
 	"errors"
+	"fmt"
 	"net"
 
 	"github.com/google/gopacket"
@@ -19,11 +20,17 @@ type GeneratorAdapter struct {
 
 // Read implements interface Adapter
 func (a *GeneratorAdapter) Read(in chan goul.Item, message goul.Message) (chan goul.Item, error) {
+	if a.ID == "" {
+		a.ID = "gen-reader"
+	}
 	return goul.Launch(a.reader, in, message)
 }
 
 // Write implements interface Adapter
 func (a *GeneratorAdapter) Write(in chan goul.Item, message goul.Message) (chan goul.Item, error) {
+	if a.ID == "" {
+		a.ID = "gen-writer"
+	}
 	return goul.Launch(a.writer, in, message)
 }
 
@@ -59,6 +66,8 @@ func (a *GeneratorAdapter) writer(in, out chan goul.Item, message goul.Message) 
 	}
 	goul.Log(a.GetLogger(), a.ID, "channel closed")
 }
+
+//** utilities ------------------------------------------------------
 
 // GeneratePacket returns pcap packet generated with given data payload.
 func GeneratePacket(data string) (gopacket.Packet, error) {
@@ -103,4 +112,51 @@ func GeneratePacket(data string) (gopacket.Packet, error) {
 
 	rawPacket := buf.Bytes()
 	return gopacket.NewPacket(rawPacket, layers.LayerTypeEthernet, gopacket.Default), nil
+}
+
+// CheckPacket tests that given item is a valid packet or not.
+func CheckPacket(item goul.Item, data string) error {
+	p, ok := item.(gopacket.Packet)
+	if !ok {
+		return errors.New("NoPacket")
+	}
+	if L := p.LinkLayer(); L == nil || L.LayerType() != layers.LayerTypeEthernet {
+		return errors.New("NotEthernet")
+	}
+	if L := p.NetworkLayer(); L == nil || L.LayerType() != layers.LayerTypeIPv4 {
+		return errors.New("NotIPv4")
+	}
+	if L := p.TransportLayer(); L == nil || L.LayerType() != layers.LayerTypeTCP {
+		return errors.New("NotTCP")
+	}
+	if L := p.ApplicationLayer(); L == nil || string(L.Payload()) != data {
+		return errors.New("DataMismatch")
+	}
+	return nil
+}
+
+// CheckRawPacket test that given item is a valid raw packet or not.
+func CheckRawPacket(item goul.Item, data string) error {
+	if item.String() != goul.ItemTypeRawPacket {
+		fmt.Println("meta mismatch: ", item.String())
+	}
+
+	packet := gopacket.NewPacket(item.Data(), layers.LayerTypeEthernet, gopacket.Default)
+	p, ok := packet.(gopacket.Packet)
+	if !ok {
+		return errors.New("NoPacket")
+	}
+	if L := p.LinkLayer(); L == nil || L.LayerType() != layers.LayerTypeEthernet {
+		return errors.New("NotEthernet")
+	}
+	if L := p.NetworkLayer(); L == nil || L.LayerType() != layers.LayerTypeIPv4 {
+		return errors.New("NotIPv4")
+	}
+	if L := p.TransportLayer(); L == nil || L.LayerType() != layers.LayerTypeTCP {
+		return errors.New("NotTCP")
+	}
+	if L := p.ApplicationLayer(); L == nil || string(L.Payload()) != data {
+		return errors.New("DataMismatch")
+	}
+	return nil
 }

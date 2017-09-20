@@ -10,7 +10,7 @@ import (
 
 	"github.com/hyeoncheon/goul"
 	"github.com/hyeoncheon/goul/adapters"
-	. "github.com/hyeoncheon/goul/tester_test"
+	. "github.com/hyeoncheon/goul/testing"
 )
 
 func Test_Network_10_Normal(t *testing.T) {

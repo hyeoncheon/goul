@@ -18,6 +18,8 @@ import (
 const (
 	ErrNetworkWriterNotSupported = "writer not supported for server"
 	ErrNetworkReaderNotSupported = "reader not supported for client"
+	ErrNetworkReadHeader         = "could not read header from network"
+	ErrNetworkReadChunk          = "could not read chunk from network"
 )
 
 // NetworkAdapter is normal mode networking adapter.
@@ -82,6 +84,7 @@ func (a *NetworkAdapter) reader(ctrl, out chan goul.Item, conn *net.TCPConn) {
 					conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 					continue
 				} else {
+					a.SetError(errors.New(ErrNetworkReadHeader))
 					goul.Log(a.GetLogger(), a.ID+"-rcv", "oops! couldn't read header: %v", err)
 					return
 				}
@@ -99,6 +102,7 @@ func (a *NetworkAdapter) reader(ctrl, out chan goul.Item, conn *net.TCPConn) {
 					conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 					continue
 				} else {
+					a.SetError(errors.New(ErrNetworkReadChunk))
 					goul.Log(a.GetLogger(), a.ID+"-rcv", "oops! couldn't read chunk: %v", err)
 					return
 				}
@@ -122,6 +126,8 @@ func (a *NetworkAdapter) reader(ctrl, out chan goul.Item, conn *net.TCPConn) {
 		// convert raw data into pcap packet if possible.
 		// but how and what can I do for compressed data?
 		// am I need autodetection? or just let pipeline do it?
+		// TODO: This code does not work properly. gzip also treated as packet.
+		// TODO: Please add mime time in header or just remove all pipes.
 		p := gopacket.NewPacket(data, layers.LayerTypeEthernet, gopacket.Default)
 		if packet, ok := p.(gopacket.Packet); ok {
 			out <- packet

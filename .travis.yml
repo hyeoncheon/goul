@@ -17,7 +17,7 @@ before_install:
 go_import_path: github.com/hyeoncheon/goul
 
 script:
-  - go build -o goul cmd/goul/main.go
+  - go build -o goul ./cmd/goul
   - ls -l goul
   - ./test-gocover.sh
   - go test ./... -v

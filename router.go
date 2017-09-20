@@ -119,7 +119,7 @@ func (r *BaseRouter) getLogger() Logger {
 
 // Messages is a map for system messages.
 var Messages = map[string]*ItemGeneric{
-	"closed": &ItemGeneric{
+	"closed": {
 		Meta: "message",
 		DATA: []byte("channel closed. done"),
 	},

@@ -54,7 +54,7 @@ func (a *DummyAdapter) writer(in, out chan goul.Item, message goul.Message) {
 
 	goul.Log(a.GetLogger(), a.ID, "writer in looping...")
 	i := 0
-	for _ = range in {
+	for range in {
 		i++
 		goul.Log(a.GetLogger(), a.ID, "works %d times", i)
 	}

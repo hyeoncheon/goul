@@ -134,7 +134,7 @@ func (a *DeviceAdapter) dummy(in, out chan goul.Item, message goul.Message) {
 	defer goul.Log(a.GetLogger(), a.ID, "exit")
 
 	goul.Log(a.GetLogger(), a.ID, "dummy writer in looping...")
-	for _ = range in {
+	for range in {
 	}
 	goul.Log(a.GetLogger(), a.ID, "channel closed")
 	out <- &goul.ItemGeneric{Meta: "message", DATA: []byte("channel closed. done")}

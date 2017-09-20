@@ -7,7 +7,6 @@ import (
 
 	"github.com/hyeoncheon/goul"
 	"github.com/hyeoncheon/goul/adapters"
-	"github.com/hyeoncheon/goul/pipes"
 )
 
 func run(opts *Options) {
@@ -23,23 +22,23 @@ func run(opts *Options) {
 		reader, _ := adapters.NewNetwork(opts.addr, opts.port)
 		defer reader.Close()
 
-		logger.Debugf("initialize device dump on %v...", opts.device)
-		writer := &adapters.DummyAdapter{ID: "----DW", Adapter: &goul.BaseAdapter{}}
-		/*
-			writer, err = adapters.NewDevice(opts.device)
-			if err != nil {
-				logger.Error("couldn't create new device reader: ", err)
-				return err
-			}
-			defer reader.Close()
-		*/
+		logger.Debugf("initialize device pump on %v...", opts.device)
+		writer, err := adapters.NewDevice(opts.device, opts.isTest)
+		if err != nil {
+			logger.Error("couldn't create new device reader: ", err)
+			return
+		}
+		defer reader.Close()
+
+		writer.SetOptions(true, 1600, 1)
+
 		router.SetReader(reader)
 		router.SetWriter(writer)
-		router.AddPipe(&pipes.CompressZLib{Pipe: &goul.BasePipe{Mode: goul.ModeReverter}})
-		router.AddPipe(&pipes.DebugPipe{Pipe: &goul.BasePipe{Mode: goul.ModeConverter}})
+		//router.AddPipe(&pipes.CompressZLib{Pipe: &goul.BasePipe{Mode: goul.ModeReverter}})
+		//router.AddPipe(&pipes.DebugPipe{Pipe: &goul.BasePipe{Mode: goul.ModeConverter}})
 	} else {
 		logger.Debugf("initialize device dump on %v...", opts.device)
-		reader, err := adapters.NewDevice(opts.device)
+		reader, err := adapters.NewDevice(opts.device, opts.isTest)
 		if err != nil {
 			logger.Error("couldn't create new device reader: ", err)
 			os.Exit(2)
@@ -50,7 +49,7 @@ func run(opts *Options) {
 			logger.Infof("user defined filter: <%v>", opts.filter)
 			reader.SetFilter(opts.filter)
 		}
-		reader.SetOptions(false, 1600, 1)
+		reader.SetOptions(true, 1600, 1)
 
 		logger.Debugf("initialize network connection %v:%v...", opts.addr, opts.port)
 		writer, _ := adapters.NewNetwork(opts.addr, opts.port)
@@ -59,7 +58,7 @@ func run(opts *Options) {
 		router.SetReader(reader)
 		router.SetWriter(writer)
 		//router.AddPipe(&pipes.DebugPipe{Pipe: &goul.BasePipe{Mode: goul.ModeConverter}})
-		router.AddPipe(&pipes.CompressZLib{Pipe: &goul.BasePipe{Mode: goul.ModeConverter}})
+		//router.AddPipe(&pipes.CompressZLib{Pipe: &goul.BasePipe{Mode: goul.ModeConverter}})
 		//router.AddPipe(&pipes.DebugPipe{Pipe: &goul.BasePipe{Mode: goul.ModeReverter}})
 	}
 	control, done, err := router.Run()
@@ -78,14 +77,20 @@ func run(opts *Options) {
 			switch s {
 			case syscall.SIGINT:
 				logger.Debug("interrupted! exit gracefully...")
-				close(control)
+				select {
+				case <-control:
+				default: // if channel is alive
+					close(control)
+				}
 			}
 		}
 	}()
 
 	if done != nil {
 		<-done
-		if _, ok := <-control; ok {
+		select {
+		case <-control:
+		default: // if channel is alive
 			close(control)
 		}
 	}

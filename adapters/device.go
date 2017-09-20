@@ -42,6 +42,7 @@ type DeviceAdapter struct {
 	timeout     time.Duration
 	filter      string
 
+	isTest         bool
 	handle         *pcap.Handle
 	inactiveHandle *pcap.InactiveHandle
 }
@@ -69,6 +70,10 @@ func (a *DeviceAdapter) Read(in chan goul.Item, message goul.Message) (chan goul
 // Write implements interface Adapter
 func (a *DeviceAdapter) Write(in chan goul.Item, message goul.Message) (chan goul.Item, error) {
 	defer a.recover()
+
+	if a.isTest {
+		return goul.Launch(a.dummy, in, message)
+	}
 
 	a.err = a.activate()
 	if a.err != nil {
@@ -123,8 +128,20 @@ func (a *DeviceAdapter) writer(in, out chan goul.Item, message goul.Message) {
 	out <- &goul.ItemGeneric{Meta: "message", DATA: []byte("channel closed. done")}
 }
 
+// writer write out the packets from input channel
+func (a *DeviceAdapter) dummy(in, out chan goul.Item, message goul.Message) {
+	defer close(out)
+	defer goul.Log(a.GetLogger(), a.ID, "exit")
+
+	goul.Log(a.GetLogger(), a.ID, "dummy writer in looping...")
+	for _ = range in {
+	}
+	goul.Log(a.GetLogger(), a.ID, "channel closed")
+	out <- &goul.ItemGeneric{Meta: "message", DATA: []byte("channel closed. done")}
+}
+
 // NewDevice returns new device adapter.
-func NewDevice(dev string) (*DeviceAdapter, error) {
+func NewDevice(dev string, isTest bool) (*DeviceAdapter, error) {
 	a := &DeviceAdapter{
 		ID:          defaultDeviceAdapterID,
 		device:      dev,
@@ -133,6 +150,7 @@ func NewDevice(dev string) (*DeviceAdapter, error) {
 		timeout:     defaultTimeout,
 		filter:      defaultFilter,
 		Adapter:     &goul.BaseAdapter{},
+		isTest:      isTest,
 	}
 	a.inactiveHandle, a.err = pcap.NewInactiveHandle(a.device)
 	return a, a.err

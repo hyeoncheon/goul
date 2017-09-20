@@ -51,8 +51,8 @@ func (a *DummyAdapter) reader(in, out chan goul.Item, message goul.Message) {
 func (a *DummyAdapter) writer(in, out chan goul.Item, message goul.Message) {
 	defer close(out)
 	defer goul.Log(a.GetLogger(), a.ID, "exit")
-	goul.Log(a.GetLogger(), a.ID, "writer in looping...")
 
+	goul.Log(a.GetLogger(), a.ID, "writer in looping...")
 	i := 0
 	for _ = range in {
 		i++

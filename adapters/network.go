@@ -186,6 +186,7 @@ func NewNetwork(addr string, port int) (*NetworkAdapter, error) {
 
 // Close implements Adapter:
 func (a *NetworkAdapter) Close() error {
+	goul.Log(a.GetLogger(), a.ID, "cleanup...")
 	if a.listener != nil {
 		a.listener.Close()
 	}

@@ -55,7 +55,7 @@ func getOptions() *Options {
 	getopt.SetParameters("filters ...")
 	getopt.FlagLong(&help, "help", 'h', "help")
 	getopt.FlagLong(&list, "list", 'l', "list network devices")
-	getopt.FlagLong(&opts.isTest, "test", 't', "test mode (no injection)")
+	getopt.FlagLong(&opts.isTest, "test", 'T', "test mode (no injection)")
 	getopt.FlagLong(&opts.isDebug, "debug", 'D', "debugging mode (print log messages)")
 	getopt.FlagLong(&opts.isServer, "server", 's', "run as receiver")
 	getopt.FlagLong(&opts.addr, "addr", 'a', "address to connect (for client)")

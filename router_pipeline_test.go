@@ -27,7 +27,7 @@ func Test_Pipeline_1_Functions(t *testing.T) {
 	router.AddPipe(&pipes.DummyPipe{ID: "----R-", Pipe: &goul.BasePipe{Mode: goul.ModeReverter}})
 
 	control, done, err := router.Run()
-	r.NoError(err)
+	r.NoError(err, "error: %v", err)
 	r.NotNil(control)
 	r.NotNil(done)
 

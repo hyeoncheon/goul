@@ -61,18 +61,18 @@ func (r *BaseRouter) Run() (chan Item, chan Item, error) {
 		return nil, nil, errors.New(ErrRouterNoReaderOrWriter)
 	}
 
-	cntl := make(chan Item)
-	ch, err := r.getReader().Read(cntl, nil)
+	ctrl := make(chan Item)
+	ch, err := r.getReader().Read(ctrl, nil)
 	if err != nil {
 		return nil, nil, err
 	}
-	tx, err := r.getWriter().Write(ch, nil)
+	done, err := r.getWriter().Write(ch, nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	Log(r.getLogger(), "ROUTER", "--------------- started -----------------")
-	return cntl, tx, nil
+	return ctrl, done, nil
 }
 
 // AddPipe implements Router: but BaseRouter does not support pipelining.

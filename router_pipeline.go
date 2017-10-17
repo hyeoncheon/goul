@@ -30,10 +30,9 @@ func (r *Pipeline) Run() (ctrl, done chan Item, err error) {
 		return nil, nil, errors.New(ErrRouterNoReaderOrWriter)
 	}
 
-	cntl := make(chan Item)
-	var ch, tx chan Item
-
-	ch, r.err = r.getReader().Read(cntl, nil)
+	ctrl = make(chan Item)
+	var ch chan Item
+	ch, r.err = r.getReader().Read(ctrl, nil)
 	if r.err != nil {
 		return nil, nil, r.err
 	}
@@ -47,13 +46,13 @@ func (r *Pipeline) Run() (ctrl, done chan Item, err error) {
 			return nil, nil, r.err
 		}
 	}
-	tx, r.err = r.getWriter().Write(ch, nil)
+	done, r.err = r.getWriter().Write(ch, nil)
 	if r.err != nil {
 		return nil, nil, r.err
 	}
 
 	Log(r.getLogger(), "router", "started ---------------------------------")
-	return cntl, tx, nil
+	return ctrl, done, nil
 }
 
 // AddPipe implements Router
@@ -74,8 +73,8 @@ func (r *Pipeline) AddPipe(pipe Pipe) (err error) {
 
 // GetPipes implements Router
 func (r *Pipeline) GetPipes() []Pipe {
-	if r.pipes != nil {
-		return r.pipes
+	if r.pipes == nil {
+		return []Pipe{}
 	}
-	return []Pipe{}
+	return r.pipes
 }

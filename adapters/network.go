@@ -34,7 +34,7 @@ type NetworkAdapter struct {
 
 // Read implements interface Adapter
 func (a *NetworkAdapter) Read(ctrl chan goul.Item, message goul.Message) (chan goul.Item, error) {
-	out := make(chan goul.Item)
+	out := make(chan goul.Item, goul.ChannelSize)
 	if a.isServer {
 		laddr, _ := net.ResolveTCPAddr("tcp", a.address)
 		a.listener, a.err = net.ListenTCP("tcp", laddr)
@@ -72,15 +72,24 @@ func (a *NetworkAdapter) reader(ctrl, out chan goul.Item, conn *net.TCPConn) {
 	goul.Log(a.GetLogger(), a.ID+"-rcv", "reader in looping...")
 	buffer := bufio.NewReader(conn)
 	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+
+	var i int
+	var header [2]byte
+	var err error
+	var nerr net.Error
+	var ok bool
+	var size uint16
+	var remind int
+	var data []byte
+	var cnt int
+	var p, packet gopacket.Packet
 	for {
-		header := []byte{}
-		for i := 0; i < 2; {
-			bt, err := buffer.ReadByte()
+		for i = 0; i < 2; {
+			header[i], err = buffer.ReadByte()
 			if err == nil {
-				header = append(header, bt)
 				i++
 			} else {
-				if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
+				if nerr, ok = err.(net.Error); ok && nerr.Timeout() {
 					conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 					continue
 				} else {
@@ -90,15 +99,15 @@ func (a *NetworkAdapter) reader(ctrl, out chan goul.Item, conn *net.TCPConn) {
 				}
 			}
 		}
-		size := binary.BigEndian.Uint16(header)
+		size = binary.BigEndian.Uint16(header[:])
 
-		data := []byte{}
-		remind := int(size)
+		data = []byte{}
+		remind = int(size)
 		for {
 			chunk := make([]byte, remind)
-			cnt, err := buffer.Read(chunk)
+			cnt, err = buffer.Read(chunk)
 			if err != nil {
-				if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
+				if nerr, ok = err.(net.Error); ok && nerr.Timeout() {
 					conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 					continue
 				} else {
@@ -113,10 +122,10 @@ func (a *NetworkAdapter) reader(ctrl, out chan goul.Item, conn *net.TCPConn) {
 				break
 			}
 		}
-		goul.Log(a.GetLogger(), a.ID+"-rcv", "read %v %v", len(data), remind)
+		//goul.Log(a.GetLogger(), a.ID+"-rcv", "read %v %v", len(data), remind)
 
 		select {
-		case _, ok := <-ctrl:
+		case _, ok = <-ctrl:
 			if !ok {
 				goul.Log(a.GetLogger(), a.ID+"-rcv", "channel closed b4 write")
 				return
@@ -128,8 +137,8 @@ func (a *NetworkAdapter) reader(ctrl, out chan goul.Item, conn *net.TCPConn) {
 		// am I need autodetection? or just let pipeline do it?
 		// TODO: This code does not work properly. gzip also treated as packet.
 		// TODO: Please add mime time in header or just remove all pipes.
-		p := gopacket.NewPacket(data, layers.LayerTypeEthernet, gopacket.Default)
-		if packet, ok := p.(gopacket.Packet); ok {
+		p = gopacket.NewPacket(data, layers.LayerTypeEthernet, gopacket.Default)
+		if packet, ok = p.(gopacket.Packet); ok {
 			out <- packet
 		} else {
 			out <- &goul.ItemGeneric{Meta: goul.ItemTypeUnknown, DATA: data}

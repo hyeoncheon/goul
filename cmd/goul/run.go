@@ -90,7 +90,7 @@ func run(opts *Options, sigs ...chan os.Signal) error {
 				logger.Debug("interrupted! exit gracefully...")
 				select {
 				case <-control:
-				default: // if channel is alive
+				default: // if channel is still alive
 					close(control)
 				}
 			}
@@ -98,10 +98,10 @@ func run(opts *Options, sigs ...chan os.Signal) error {
 	}()
 
 	if done != nil {
-		<-done
+		<-done // control flow of the main routine stops and wait here.
 		select {
 		case <-control:
-		default: // if channel is alive
+		default: // if channel is still alive
 			close(control)
 		}
 	}

@@ -7,23 +7,28 @@
 
 
 Goul(거울; Mirror in English) is a tool for virtual network port mirroring
-over the Internet, especially for cloud computing environment.
+over the Internet for network traffic analyze and/or security monitoring.
+May useful especially for cloud computing environment.
 
-On legacy infrastructure, with many physical switches, we can use a port
-mirror(SPAN) on the switch for monitoring and analysing of network, and
-connecting a security appliances. But in cloud computing environment, it
-is not easy as legacy and in some cases, it is completely impossible.
+On legacy infrastructure, with many physical switches, we can use a
+[port mirroring](https://en.wikipedia.org/wiki/Port_mirroring)
+([SPAN; Switched Port Analyzer](https://supportforums.cisco.com/t5/network-infrastructure-documents/understanding-span-rspan-and-erspan/ta-p/3144951)
+in Cisco's term) on the
+switch for monitoring and analyzing of traffic, and connecting a security
+appliances. But in cloud computing environment, it is not easy as legacy
+and in some cases, it is completely impossible.
 
 This tool is for someone like me who want to mirror some port of the
 virtual instances or virtual network appliances.
 
-It is now on development using
-Go language
+Goul is now on development using
+[Go language](https://golang.org/)
 with
-gopacket
+[gopacket](https://github.com/google/gopacket)
 and
-pcap
-library.
+[pcap library](http://www.tcpdump.org/pcap.html)
+but not yet stable enough.
+
 
 ## Features
 
@@ -35,67 +40,230 @@ library.
 * Support adaptive mode to reduce the impact of production traffic. (Plan)
 
 
-## Work Flow
 
-Goul captures packets on the source device with reader function and push it
-into processing pipeline.  Processing pipeline is a chain of pipe functions
-executed as a goroutine.  Another end of the pipeline is connected to writer
-function and it send the data to the receiver side, over the Internet.
+## Architecture
 
-The pipe function is a function with input and output channel. The input
-data and output data is usally a packet data but some pipe can modify the
-packet into different kind of binary. (for example, gzip compressed data)
-You can write your own pipe function with this interface for your own
-reason. for example, counting specific packets, discard some protocol,
-or deduplication of the same packets.
+Goul is a set of library and its default executable. The executable `goul`
+is a program written with goul library ofcause.
 
-In the receiver side, which is the Goul is running as receiver, the reader
-function receives all data from network socket, which is connected to the
-sender via Internet. It pushs the data into the reverse pipeline.
-The reverse pipeline is also a chain of pipe functions as same as processing
-pipeline but reverse order of it. (because the datatype must be matched by
-the stacked pipes)
+### Goul Library
 
-The reverse pipeline recovers the packet into its original form and pass
-it to the writer function. Writer function for the receiver mode is packet
-injector. After that, the packets on the network interface is virtually
-same as original source device. (Simply, "Copied")
+### Goul Executable
 
-![Goul Generic](docs/goul.generic.png)
+**Goul consists of
+[Controller](#controller-details),
+[Processing Router](#router-details),
+[Read/Write Adapters](#adapter-details),
+and
+[Pipes](#pipe-details).**
+In conceptual structure, The Read Adapter is positioned on one edge of
+the frame and Write Adapter is located on the other side.
+Between them, the Processing Router is located and it contains some Pipes.
+For controlling of them, the Controller is positioned on top of them.
+It is easier to understand this with diagram:
 
-In above configuration, the packets captured on network `A` will be passed
-through the process pipeline on left side, then sended to the right side
-over the Internet. In the right side, the receiver reverse it(for example
-decompressing it,...) and inject into a local network interface.
+![Goul Client Block](docs/goul-block-client-color.png)
 
-The target network interface is connected to the switch port which is
-configured as source port of the mirror configuration set. The packet on
-the source port will be mirrored by switch configuration and then it passed
-into Network Analyzer.
+Goul can be executed as both server mode and client mode. The diagram above
+is for client mode of Goul.
+The Read Adapter for client is Device Adapter and it is located on right
+bottom of the frame (red box). By the Read Adapter, Forward Pipeline,
+the virtual component of the Router is positioned with Router (green boxes)
+and it has three Pipes from #1 to #3 (yellow boxes).
+On left bottom, Network Adapter, the Write Adapter for client is located
+(blue box). All of them are covered with Controller finally.
+With this straight pipeline formation, Device Adapter works as a source of
+the pipeline and Network Adapter will be a sync of the pipeline.
 
-If the network to be monitored is simply, or the analyzer is dedicated to
-this set, then you can configure it as below. the only difference is, there
-is no switch for mirroring. The Network Analyzer is directly connected to
-the receiver server.
+![Goul Server Block](docs/goul-block-server-color.png)
 
-![Goul Direct](docs/goul.direct.png)
+In server mode, next diagram, basic structure is same as client but
+there are two differences. The first one is the Adapters. **Since Goul
+works as receiver and packet injector in server mode**, the Read Adapter
+is configured with Network Adapter and the Write Adapter is configured
+with Device Adapter.
+Second is the order of Pipes. As you can see on the label of pipeline,
+we call it Reverse Pipeline in contrast to Forward Pipeline of client,
+**the order of Pipes is reversed in server mode**. #3, #2 and #1
 
-### Pipeline Details
 
-You can write your own pipe function with input and output channel.
-There is no limitation on the job of the function. (Currently, the packet
-already contains these functions: zlib and gzip compression and its reverse,
-counting, and printing the packet details for debugging.)
 
-The pipe function must be wrote as a pair: compress then decompress as reverse,
-encoding then decoding as reverse, and so one. Exception for this rule is a
-transparent function which is the output data is same as its input data.
-For example, Counter or packet printer is a transparent function.
+## Data Flow
 
-If the function used in process pipeline is not transparent one, then the
-reverse function must be exist on the receiver side.
+### Client Mode
 
-## Install
+When the Goul started, it setup Router with Adapters and Pipes.
+In client mode, Read Adapter initializes network interface device for
+packet capture and Write Adapter makes a connection to the server
+while setup.  When Goul executes Router, Router executes Adapter's
+reader function and writer function, and Pipe functions internally
+then all these functions will start their own loop as goroutines.
+
+When the reader loop read packets from the network interface device,
+the packets are passed into the Processing Router via channel.
+Bundled executable uses the default Pipeline Router as a Router so
+the packets are pushed into the Forward Pipeline (Actually the input
+channel of the first Pipe).
+Pipeline Router is a chain of the Pipes. Each Pipe has its own loop
+for the processing of incoming data such as compression, counting,
+deduplication, and so on.
+The output of the Read Adapter is always a packet data but since some
+of Pipes are used for modifying the packet data, for example compress
+it with zlib or gzip, the data type on the pipeline can not be
+specified as single format (See [Router Details](#router-details)).
+Another end of the pipeline is connected to Write Adapter's writer
+function and it receives data from the pipeline then just send it to
+the connected server.
+
+Diagram below diagram shows this client flow:
+
+![Data Flow of Client](docs/goul-flow-data-client.png)
+
+
+### Server Mode
+
+As you can imagine, the data flow of the server mode also as same as
+client since it just a mode, with same structure.
+When Goul runs as server mode, it makes a listner for the connections
+from clients, and initialize network device for packet injection.
+If a client was connected, It invoke separated goroutine for each
+connection but using same pipeline and writer for all of clients.
+
+As already said, second difference of server mode is the order of the
+Pipes. With same reason, the data type from reader to the end of the
+pipeline can not be specified but the input data to the writer function
+is packet data. Note that, the order of the Pipes are very important
+for Pipeline Router. This Router is just a simple ORDERED stack of
+the functions. Even though I write the Pipes carefully with exception
+handling for the data type, it can be broken if you use custome Pipe
+without this consideration.
+
+Flow of the server side is shown in this diagram:
+
+![Data Flow of Server](docs/goul-flow-data-server.png)
+
+Yes, Quite simple!
+
+
+## All Together Now
+
+In [Data Flow](#data-flow) section, we just show the data flow inside of
+the Goul program, for client mode and server mode.
+Now "Calling All Engines" and say "All Together Now!"
+
+Let say there is a virtual network appliance on the cloud environment
+and we have network analyzer on the on-premises data center. In below
+configuration, the right side is the cloud environment with running
+instance of Goul in client mode and the left side is the on-premises
+with network analyzer and running Goul in server mode.
+
+![Direct Configuration](docs/goul-architecture-direct.png)
+
+The packets on the cloud network (thick blue line on right bottom)
+should be readable by the NIC on the client for this works.
+(Yes, sometimes we need Promiscuos mode or the box contains the client
+must be a router or similar phase.)
+After captured and processed, the packet on the blue line will be
+sent via the Internet and it will be received by server. Server will
+process it back and inject the packets into the network interface
+that connected directly to the network analyzer.
+As a result, even though the network analyzer cannot see the packets
+on the blue line directly, all of the packets can be analyzed by the
+analyzer.
+
+Sometime, No. In most cases, the network analyzer is not dedicated
+device for this target network. In this case, we can configure our
+environment like below:
+
+![Aggregated Configuration](docs/goul-architecture-switch.png)
+
+In this case, we use additional physical switch to make it as hub of
+the analyzing. If the switch was configured well as mirror or dummy,
+the packets from the top port which is connected to the server can be
+found on the bottom port which is connected to the network analyzer.
+
+Simple too!
+
+
+
+## Router Details
+
+Processing Router is a set of processing units which controls data processing
+such as compression, deduplication, and other required processing.
+In perspective of abstraction, the Router has only two channels. The input
+channel and output channel. Input channel is the output channel of the
+Read Adapter and output channel is the input channel for the Write Adapter.
+With this abstracted interface rules, the internal of the Router can be free.
+
+The default Router for the Goul is Pipeline Router. This requires right
+order of the Pipes for forward pipeline of client and reverse pipeline
+of server. Original design of the Router is that it handles MIME type
+of the data passed between Pipes and automatically find right Pipe for
+the data type with MIME but it is not easy to implement (since we need
+to know not only the input type of the Pipe but also the output type,
+and type of the final goal too.) and the effect of the real routing is
+not big as I expected at the first time.
+
+Anyway, user can implement their own Router with the interfaces.
+
+
+
+## Pipe Details
+
+Writing a Pipe also very easy. The interface for the pipe is very few
+and simple. Currently gzip and zlib compression/decompression, packet
+counting and printing for debug are included in the library.
+
+Prefered candidates are packet counting with packet types for statistics,
+discard some protocol on air, deduplication of the packet, and so on.
+Note that protocol or port based filtering is supported by gopacket
+library itself and it can be passed to Goul as command line arguments.
+
+
+
+## Adapter Details
+
+Adapter is most important part of the Goul. Everything is started from
+Adapter and is finished with Adapter. There is two types of Adapters
+and they must be provided to Router before run it.
+
+Read Adapter is a Adapter for reading data from its own input source.
+For example, the Read Adapter of client is Device Adapter as I already
+mentioned. It reads packet data from configured network interface and
+push it into the pipeline.
+Like this, Read Adapter is used as source of the pipeline.
+
+Write Adapter is a Adapter for writing given data to its destination.
+For example, the Write Adapter for the server also Device Adapter and
+it write(inject) given packet into the target device.
+Yes, Write Adapter is used as sync of the pipeline, ofcause.
+
+
+
+## Controller Details
+
+Controller for the Goul was planed but currently not implemented.
+Currently, just a simple interrupt handler is used as controller for
+terminate Goul gracefully. If Goul receives interrupt signal, the
+signal number 2 in linux and similar, the controller catch it and
+send a termination message to the router via control channel
+(In fact, it just close the channel now but the fine controll can
+be implemented).
+
+Diagram below shows the propagation of the termination message:
+
+#### Client Mode
+
+![Control Flow of Client](docs/goul-flow-ctrl-client.png)
+
+#### Server Mode
+
+![Control Flow of Server](docs/goul-flow-ctrl-server.png)
+
+
+
+
+## Installation
 
 Installation of Goul is same as any Go programs. Just get it.
 But while compiling it, it needs `libpcap` development packet so you need
@@ -106,90 +274,91 @@ Linux. (Or other Debian based Linux distributions)
 $ sudo apt-get install libpcap-dev
 <...>
 $ go get github.com/hyeoncheon/goul/cmd/goul
-$ 
+$
 $ ls $GOPATH/pkg/linux_amd64/github.com/hyeoncheon
 goul  goul.a
-$ 
+$
 $ ls $GOPATH/bin
 goul
-$ 
+$
 ```
+
 
 ## Running
 
-It runs in 2x2 mode.
-First, as described above, it can run as sender or receiver. It also run
-as server or client. This two type of modes are orthogonal so you can
-run it as sender client and receiver server pair or sender server and
-receiver client mode.
+Goul was wrote as can support 2x2 mode.
+It means, the server can be both a capturer and injector, the client
+also can be a capturer and injector. with this, we can configure
+our environment eaily even if there is a very complex firewalls
+in front of the receiver(injector).
+So called reverse connection mode: server do capture on the interface
+of its device and wait for connection then send it to the connected
+client which can act as receiver/injector.
 
-The reason why I made these somewhat strange and/or confusing pair of
-mode is, I consider some network firewall environment. For example,
-if your receiver must be located in the network behind the wall, but
-your sender is located outside of the wall, you don't need to configure
-or ask firewall open to administrator. Just set the receiver as
-client. (Currently I am considering removing of this 2x2 mode and just
-make receiver as server and sender as client.
-Anyway, currently it support this 2x2 modes.)
+Currently, I removed those codes for 2x2 mode because it makes the code
+is not readable sometime and the chance to use this reverse connection
+mode is rare. Most important reason for this decision is, it is
+harder to implement multi-session receiver for multiple sources.
 
-Command line options are shown below:
+For the complex firewall environment, I have a plan of proxy mode.
+To be continued...
+
+Anyway,
+
+Command line options for version 0.2 are shown below:
 
 ```console
-$ goul -h
-Goul 0.1
+$ ./goul --help
+goul 0.2-head
 
-Goul is a packet capture program for cloud environment.
+goul is a packet capture program for cloud environment.
 
 If it runs as capturer mode, it captures all packets on local network
 interface and sends them to remote receiver over internet.
 The other side, while it runs as receiver mode, it receives packets from
 remote capturer and inject them into the interface on the system.
 
-Usage: goul [-Dhlrtv] [-a value] [-d value] [-p value] filters ...
+Usage: goul [-DhlsTv] [-a value] [-d value] [-p value] filters ...
  -a, --addr=value  address to connect (for client)
  -D, --debug       debugging mode (print log messages)
  -d, --dev=value   network interface to read/write
  -h, --help        help
  -l, --list        list network devices
- -p, --port=value  address to connect (default is 6001)
- -r, --recv        run as receiver
- -t, --test        test mode (no injection)
+ -p, --port=value  tcp port number (default is 6001)
+ -s, --server      run as receiver
+ -T, --test        test mode (no injection)
  -v, --version     show version of goul
 $
 ```
 
-If you just run this like below, it runs as sender server.
+Command for server mode is:
 
 ```console
-$ sudo ./goul
+$ sudo ./goul --server
+<...>
 ```
 
-For sender client, you can run Goul like below:
+Command for client mode is:
 
 ```console
 $ sudo ./goul --addr 10.0.0.1
+<...>
 ```
 
-10.0.0.1 is a IP address of the receiver server. For serve this sender
-client, means receiver server, you can simply run Goul as below:
+10.0.0.1 is a IP address of the server.
+Note that, for both server and client, you need super user permission
+to handle network interface devices. use sudo for it on command line.
 
+If you cannot use default port number 6001 with any reason, simply
+pass `-p #` or `--port=#` for assigning user defined port. `#` is the
+number of the port to listen or connect.
 
-```console
-$ sudo ./goul --recv
-```
-
-For receiver client, as you can imagin,
-
-```console
-$ sudo ./goul --recv --address 10.0.0.1
-```
-
-will be work. for server and client, it uses TCP port 6001 but you can
-set your own port number with `-p` flag followed by port number.
-
-The default network device is `eth0` but you can configure it with `-d` flag.
-If you don't know which network interface name is for you, you can simply
-try `-l` flag for listing all possible interfaces.
+Default device to capture or injection is `eth0`. but I know in most
+cases, it need to be overrided. Use `-d dev` or `--device dev` option
+for your device configuration.
+If you don't know which devices are exists or configured on the
+system, use `-l` or `--list`for listing all devices. Root privilege is
+not requires for this.
 
 ```console
 $ goul -l
@@ -205,7 +374,7 @@ Devices:
 * lo
   - IP address:  127.0.0.1
   - IP address:  ::1
-$ 
+$
 ```
 
 The Goul is currently on development and it can be unstable. So if you
@@ -224,7 +393,7 @@ the command line. (`filters ...`) The filter rule is same as other
 `port 80 and port 443` as filter for getting `HTTP` and `HTTPS` traffic.
 
 
-Have fun with packets! and the Goul!
+Have fun with packets! and funnier with the Goul!
 
 
 ## Current Status
@@ -244,9 +413,11 @@ ESPECIALLY, DO NOT FORWARD L2 MANAGEMENT PROTOCOL LIKE `STP` INTO THE NORMALLY
 CONFIGURED PORT. IT CAN BREAK YOUR ENTIRE NETWORK.
 
 
+
 ## Author
 
 Yonghwan SO https://github.com/sio4, http://www.sauru.so
+
 
 
 ## Copyright (GNU General Public License v3.0)

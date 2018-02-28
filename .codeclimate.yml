@@ -1,9 +1,17 @@
-engines:
+version: "2"
+checks:
+  method-lines:
+    config:
+      threshold: 40
+plugins:
   fixme:
     enabled: true
-    checks:
-      TODO:
-        enabled: false
+    config:
+      strings:
+        - FIXME
+        - BUG
+        - HACK
+        - XXX
   gofmt:
     enabled: true
   golint:
@@ -15,6 +23,4 @@ exclude_paths:
   - "*_test.go"
   - "**_test.go"
   - docs/*
-ratings:
-  paths:
-    - "**.go"
+  - profiling/*

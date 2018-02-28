@@ -122,7 +122,7 @@ func (a *NetworkAdapter) reader(ctrl, out chan goul.Item, conn *net.TCPConn) {
 				break
 			}
 		}
-		//goul.Log(a.GetLogger(), a.ID+"-rcv", "read %v %v", len(data), remind)
+		goul.Log(a.GetLogger(), a.ID+"-rcv", "read %v %v", len(data), remind)
 
 		select {
 		case _, ok = <-ctrl:
@@ -136,7 +136,7 @@ func (a *NetworkAdapter) reader(ctrl, out chan goul.Item, conn *net.TCPConn) {
 		// but how and what can I do for compressed data?
 		// am I need autodetection? or just let pipeline do it?
 		// TODO: This code does not work properly. gzip also treated as packet.
-		// TODO: Please add mime time in header or just remove all pipes.
+		// TODO: Please add mime type in header or just remove all pipes.
 		p = gopacket.NewPacket(data, layers.LayerTypeEthernet, gopacket.Default)
 		if packet, ok = p.(gopacket.Packet); ok {
 			out <- packet

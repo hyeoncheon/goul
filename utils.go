@@ -20,7 +20,7 @@ func PrintDevices() error {
 		return errors.New("NoDevices")
 	}
 
-	fmt.Println(`\nYour system has following device(s).
+	fmt.Println(`Your system has following device(s).
 Use name of the device with '-d' flag for override default device 'eth0'.
 (e.g. '-d bond0')
 

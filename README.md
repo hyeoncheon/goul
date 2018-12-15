@@ -271,7 +271,7 @@ to install it before get. Below is the installation process for Ubuntu
 Linux. (Or other Debian based Linux distributions)
 
 ```console
-$ sudo apt-get install libpcap-dev
+$ sudo apt-get install libpcap-dev gcc
 <...>
 $ go get github.com/hyeoncheon/goul/cmd/goul
 $

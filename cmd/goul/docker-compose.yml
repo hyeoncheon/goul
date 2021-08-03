@@ -1,0 +1,30 @@
+version: '3'
+services: 
+  goul-server:
+    image: nexclipper/goul:0.2-head
+    restart: always
+    privileged: true 
+    environment: 
+      - GOUL_DEVICE="eth0"
+    ports:
+      - "6001:6001"
+    command:
+      - goul
+      - --server
+      - --debug
+      - --dev=eth0
+
+  goul-client:
+    image: nexclipper/goul:0.2-head
+    depends_on: 
+      - goul-server
+    links:
+      - goul-server
+    environment: 
+      - GOUL_SERVER_ADDRESS="goul-server"
+      - GOUL_DEVICE="eth0"
+    command:
+      - goul
+      - --addr=goul-server
+      - --dev=eth0
+      - --debug

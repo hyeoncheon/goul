@@ -1,6 +1,7 @@
 # Goul, Virtual Port Mirror over Internet (for Cloud)
 
-[![Build Status](https://travis-ci.org/hyeoncheon/goul.svg?branch=master)](https://travis-ci.org/hyeoncheon/goul)
+[![Go Reference](https://pkg.go.dev/badge/github.com/hyeoncheon/goul.svg)](https://pkg.go.dev/github.com/hyeoncheon/goul)
+[![Build Status](https://travis-ci.com/hyeoncheon/goul.svg?branch=master)](https://travis-ci.com/hyeoncheon/goul)
 [![Go Report Card](https://goreportcard.com/badge/github.com/hyeoncheon/goul)](https://goreportcard.com/report/github.com/hyeoncheon/goul)
 [![Code Climate](https://codeclimate.com/github/hyeoncheon/goul/badges/gpa.svg)](https://codeclimate.com/github/hyeoncheon/goul)
 [![Coverage Status](https://coveralls.io/repos/github/hyeoncheon/goul/badge.svg?branch=master)](https://coveralls.io/github/hyeoncheon/goul?branch=master)

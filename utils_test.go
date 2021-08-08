@@ -20,7 +20,11 @@ func Test_PrintDevices_1_Normal(t *testing.T) {
 
 	err = goul.PrintDevices()
 	if isTravis {
-		r.Error(err)
+		// Ah... I don't remember but it seems like this was an workaround
+		// for Travis CI. but not it works as the same as local env.
+		// just leave it as is as a history.
+		//r.Error(err)
+		r.NoError(err)
 	} else {
 		r.NoError(err)
 	}

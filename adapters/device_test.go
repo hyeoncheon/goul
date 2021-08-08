@@ -9,12 +9,12 @@ import (
 	"github.com/hyeoncheon/goul/adapters"
 )
 
-func Test_DeviceAdapter_1_NormalFlow(t *testing.T) {
+func Test_DeviceAdapter_11_NormalFlowReader(t *testing.T) {
 	var err error
 	var adapter goul.Adapter
 	r := require.New(t)
 
-	adapter, err = adapters.NewDevice("eth0", true)
+	adapter, err = adapters.NewDevice("lo", false)
 	r.NoError(err)
 	r.NotNil(adapter)
 
@@ -38,6 +38,34 @@ func Test_DeviceAdapter_1_NormalFlow(t *testing.T) {
 	r.EqualError(err, adapters.ErrCouldNotActivate) // permission denied
 	r.Contains(adapter.GetError().Error(), "Permission Denied")
 
+	adapter.Close()
+}
+
+func Test_DeviceAdapter_12_NormalFlowWriterTestmode(t *testing.T) {
+	var err error
+	var adapter goul.Adapter
+	r := require.New(t)
+
+	adapter, err = adapters.NewDevice("lo", true)
+	r.NoError(err)
+	r.NotNil(adapter)
+
+	logger := goul.NewLogger("debug")
+	err = adapter.SetLogger(logger)
+	r.NoError(err)
+
+	lgr := adapter.GetLogger()
+	r.NotNil(lgr)
+
+	in := make(chan goul.Item)
+	go func() {
+		defer func() {
+			recover()
+		}()
+		in <- &goul.ItemGeneric{Meta: "Message", DATA: []byte{1}}
+		return
+	}()
+
 	done, err := adapter.Write(in, nil) // with testmode
 	r.NoError(err)
 	close(in)
@@ -50,7 +78,7 @@ func Test_DeviceAdapter_2_AdapterSpecific(t *testing.T) {
 	r := require.New(t)
 
 	// get instance as adapters.DeviceAdapter instead of goul.Adapter
-	adapter, err := adapters.NewDevice("eth0", false)
+	adapter, err := adapters.NewDevice("lo", false)
 	r.NoError(err)
 	r.NotNil(adapter)
 

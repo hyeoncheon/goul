@@ -171,7 +171,9 @@ func NewDevice(dev string, isTest bool) (*DeviceAdapter, error) {
 		Adapter:     &goul.BaseAdapter{},
 		isTest:      isTest,
 	}
-	a.inactiveHandle, a.err = pcap.NewInactiveHandle(a.device)
+	if !isTest {
+		a.inactiveHandle, a.err = pcap.NewInactiveHandle(a.device)
+	}
 	return a, a.err
 }
 

@@ -149,8 +149,7 @@ func (a *DeviceAdapter) dummy(in, out chan goul.Item, message goul.Message) {
 	defer goul.Log(a.GetLogger(), a.ID, "exit")
 
 	goul.Log(a.GetLogger(), a.ID, "dummy writer in looping...")
-	var count uint64
-	count = 0
+	var count uint64 = 0
 	for range in {
 		count++
 	}
@@ -199,22 +198,22 @@ func (a *DeviceAdapter) Close() (err error) {
 }
 
 // SetOptions sets capture options to inactive handler.
-func (a *DeviceAdapter) SetOptions(promisc bool, len int, timeout time.Duration) (err error) {
+func (a *DeviceAdapter) SetOptions(promisc bool, snaplength int, timeout time.Duration) (err error) {
 	if a.inactiveHandle == nil {
 		a.err = errors.New(ErrDeviceAdapterNotInitialized)
 		return a.err
 	}
 
-	goul.Log(a.GetLogger(), a.ID, "set timeout/snaplen/promisc: %v/%v/%v", timeout, len, promisc)
+	goul.Log(a.GetLogger(), a.ID, "set timeout/snaplen/promisc: %v/%v/%v", timeout, snaplength, promisc)
 	if a.err = a.inactiveHandle.SetTimeout(timeout * time.Second); a.err != nil {
 		goul.Error(a.GetLogger(), a.ID, "set timeout error: %v", a.err)
-	} else if a.err = a.inactiveHandle.SetSnapLen(len); a.err != nil {
+	} else if a.err = a.inactiveHandle.SetSnapLen(snaplength); a.err != nil {
 		goul.Error(a.GetLogger(), a.ID, "set snaplen error: %v", a.err)
 	} else if a.err = a.inactiveHandle.SetPromisc(promisc); a.err != nil {
 		goul.Error(a.GetLogger(), a.ID, "set promisc error: %v", a.err)
 	}
 	a.promiscuous = promisc
-	a.snaplen = len
+	a.snaplen = snaplength
 	a.timeout = timeout
 	return a.err
 }

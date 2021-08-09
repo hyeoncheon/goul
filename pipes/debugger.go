@@ -72,17 +72,18 @@ func (p *DebugPipe) converter(in, out chan goul.Item, message goul.Message) {
 			}
 			w++
 
-			if p, ok := item.(gopacket.Packet); ok {
-				fmt.Println(p)
-			} else if item.String() == goul.ItemTypeRawPacket {
-				p := gopacket.NewPacket(item.Data(), layers.LayerTypeEthernet, gopacket.Default)
-				if packet, ok := p.(gopacket.Packet); ok {
-					fmt.Println(packet)
-					out <- packet
+			// TODO: need to clean up. looks strange.
+			var packet gopacket.Packet
+			if packet, ok = item.(gopacket.Packet); !ok &&
+				item.String() == goul.ItemTypeRawPacket {
+				packet = gopacket.NewPacket(item.Data(), layers.LayerTypeEthernet, gopacket.Default)
+				if packet == nil {
+					goul.Log(p.GetLogger(), p.ID, "got RawPacket but failed to convert gopacket!")
 					continue
 				}
 			}
-			out <- item
+			fmt.Println(packet)
+			out <- packet
 
 			goul.Log(p.GetLogger(), p.ID, "works %d/%d times", w, i)
 		default:

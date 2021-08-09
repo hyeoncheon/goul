@@ -24,8 +24,8 @@ func Test_RunServer(t *testing.T) {
 
 	err := run(svrOpts)
 	r.Error(err)
-	//r.EqualError(err, ErrCouldNotStartTheRouter) // in my local
-	//r.EqualError(err, ErrCouldNotCreateDeviceReader) // in travis-ci
+	//r.EqualError(err, ErrCouldNotStartTheRouter) // in my local (libpcap 1.9.1)
+	//r.EqualError(err, ErrCouldNotCreateDeviceReader) // in travis-ci (libpcap 1.7.4)
 }
 
 func Test_RunTestServer(t *testing.T) {
@@ -50,6 +50,7 @@ func Test_RunTestServer(t *testing.T) {
 		wg.Done()
 	}()
 	time.Sleep(1 * time.Second)
+	sig <- syscall.SIGUSR1
 	sig <- syscall.SIGINT
 	wg.Wait()
 	r.NoError(goerr)

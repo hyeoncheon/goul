@@ -64,7 +64,6 @@ func Test_Network_20_Interrupted(t *testing.T) {
 		<-done1
 		close(control1) //! unusal. anyway close control channel
 		wg.Done()
-		return
 	}()
 
 	for i := 0; i < 3; i++ {

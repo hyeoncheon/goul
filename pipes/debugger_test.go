@@ -43,8 +43,7 @@ func (p *PipeTestSuite) Run() {
 func (p *PipeTestSuite) Flow() {
 	r := require.New(p.T)
 
-	var router goul.Router
-	router = &goul.Pipeline{Router: &goul.BaseRouter{}}
+	var router goul.Router = &goul.Pipeline{Router: &goul.BaseRouter{}}
 
 	router.SetLogger(goul.NewLogger("debug"))
 	router.SetReader(&GeneratorAdapter{Adapter: &goul.BaseAdapter{}})
@@ -140,8 +139,7 @@ func (p *PipeTestSuiteTransparent) Run() {
 func (p *PipeTestSuiteTransparent) Flow() {
 	r := require.New(p.T)
 
-	var router goul.Router
-	router = &goul.Pipeline{Router: &goul.BaseRouter{}}
+	var router goul.Router = &goul.Pipeline{Router: &goul.BaseRouter{}}
 
 	router.SetLogger(goul.NewLogger("debug"))
 	router.SetReader(&GeneratorAdapter{Adapter: &goul.BaseAdapter{}})

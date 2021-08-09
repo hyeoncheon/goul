@@ -75,7 +75,7 @@ func (p *CompressZLib) converter(in, out chan goul.Item, message goul.Message) {
 			out <- item
 			continue
 		}
-		b.Truncate(0)
+		b.Reset()
 
 		w := zlib.NewWriter(&b)
 		w.Write(item.Data())
@@ -111,7 +111,7 @@ func (p *CompressZLib) reverter(in, out chan goul.Item, message goul.Message) {
 			continue
 		}
 
-		b.Truncate(0)
+		b.Reset()
 		b.Write(item.Data())
 
 		r, err := zlib.NewReader(&b)

@@ -12,8 +12,7 @@ import (
 
 func Test_Pipeline_1_Functions(t *testing.T) {
 	r := require.New(t)
-	var router goul.Router
-	router = &goul.Pipeline{Router: &goul.BaseRouter{}}
+	var router goul.Router = &goul.Pipeline{Router: &goul.BaseRouter{}}
 
 	reader := &adapters.DummyAdapter{ID: "R-----", Adapter: &goul.BaseAdapter{}}
 	defer reader.Close()
@@ -40,8 +39,7 @@ func Test_Pipeline_1_Functions(t *testing.T) {
 func Test_Pipeline_21_ErrorHandlingNoReaderWriter(t *testing.T) {
 	r := require.New(t)
 	var err error
-	var router goul.Router
-	router = &goul.Pipeline{Router: &goul.BaseRouter{}}
+	var router goul.Router = &goul.Pipeline{Router: &goul.BaseRouter{}}
 
 	control, done, err := router.Run()
 	r.EqualError(err, goul.ErrRouterNoReaderOrWriter)
@@ -52,10 +50,10 @@ func Test_Pipeline_21_ErrorHandlingNoReaderWriter(t *testing.T) {
 func Test_Pipeline_22_ErrorHandlingNoWriter(t *testing.T) {
 	r := require.New(t)
 	var err error
-	var router goul.Router
-	router = &goul.Pipeline{Router: &goul.BaseRouter{}}
+	var router goul.Router = &goul.Pipeline{Router: &goul.BaseRouter{}}
 
 	err = router.SetReader(&goul.BaseAdapter{})
+	r.NoError(err)
 	control, done, err := router.Run()
 	r.EqualError(err, goul.ErrRouterNoReaderOrWriter)
 	r.Nil(control)
@@ -65,10 +63,10 @@ func Test_Pipeline_22_ErrorHandlingNoWriter(t *testing.T) {
 func Test_Pipeline_23_ErrorHandlingNoReader(t *testing.T) {
 	r := require.New(t)
 	var err error
-	var router goul.Router
-	router = &goul.Pipeline{Router: &goul.BaseRouter{}}
+	var router goul.Router = &goul.Pipeline{Router: &goul.BaseRouter{}}
 
 	err = router.SetWriter(&goul.BaseAdapter{})
+	r.NoError(err)
 	control, done, err := router.Run()
 	r.EqualError(err, goul.ErrRouterNoReaderOrWriter)
 	r.Nil(control)
@@ -81,7 +79,9 @@ func Test_Pipeline_24_ErrorHandlingReadNotImpl(t *testing.T) {
 
 	router := &goul.Pipeline{Router: &goul.BaseRouter{}}
 	err = router.SetReader(&goul.BaseAdapter{})
+	r.NoError(err)
 	err = router.SetWriter(&adapters.DummyAdapter{Adapter: &goul.BaseAdapter{}})
+	r.NoError(err)
 	control, done, err := router.Run() // run with unimplemented pipe
 	r.EqualError(err, goul.ErrAdapterReadNotImplemented)
 	r.Nil(control)
@@ -94,7 +94,9 @@ func Test_Pipeline_25_ErrorHandlingWriteNotImpl(t *testing.T) {
 
 	router := &goul.Pipeline{Router: &goul.BaseRouter{}}
 	err = router.SetReader(&adapters.DummyAdapter{Adapter: &goul.BaseAdapter{}})
+	r.NoError(err)
 	err = router.SetWriter(&goul.BaseAdapter{})
+	r.NoError(err)
 	control, done, err := router.Run() // run with unimplemented pipe
 	r.EqualError(err, goul.ErrAdapterWriteNotImplemented)
 	r.Nil(control)
@@ -107,8 +109,11 @@ func Test_Pipeline_26_ErrorHandlingConvertNotImpl(t *testing.T) {
 
 	router := &goul.Pipeline{Router: &goul.BaseRouter{}}
 	err = router.SetReader(&adapters.DummyAdapter{Adapter: &goul.BaseAdapter{}})
+	r.NoError(err)
 	err = router.SetWriter(&adapters.DummyAdapter{Adapter: &goul.BaseAdapter{}})
+	r.NoError(err)
 	err = router.AddPipe(&goul.BasePipe{Mode: goul.ModeConverter})
+	r.NoError(err)
 	control, done, err := router.Run() // run with unimplemented pipe
 	r.EqualError(err, goul.ErrPipeConvertNotImplemented)
 	r.Nil(control)
@@ -122,8 +127,11 @@ func Test_Pipeline_27_ErrorHandlingRevertNotImpl(t *testing.T) {
 
 	router := &goul.Pipeline{Router: &goul.BaseRouter{}}
 	err = router.SetReader(&adapters.DummyAdapter{Adapter: &goul.BaseAdapter{}})
+	r.NoError(err)
 	err = router.SetWriter(&adapters.DummyAdapter{Adapter: &goul.BaseAdapter{}})
+	r.NoError(err)
 	err = router.AddPipe(&goul.BasePipe{Mode: goul.ModeReverter})
+	r.NoError(err)
 	control, done, err := router.Run() // run with unimplemented pipe
 	r.EqualError(err, goul.ErrPipeRevertNotImplemented)
 	r.Nil(control)

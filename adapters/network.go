@@ -82,7 +82,7 @@ func (a *NetworkAdapter) reader(ctrl, out chan goul.Item, conn *net.TCPConn) {
 	var remind int
 	var data []byte
 	var cnt int
-	var p, packet gopacket.Packet
+	var packet gopacket.Packet
 	for {
 		for i = 0; i < 2; {
 			header[i], err = buffer.ReadByte()
@@ -137,8 +137,8 @@ func (a *NetworkAdapter) reader(ctrl, out chan goul.Item, conn *net.TCPConn) {
 		// am I need autodetection? or just let pipeline do it?
 		// TODO: This code does not work properly. gzip also treated as packet.
 		// TODO: Please add mime type in header or just remove all pipes.
-		p = gopacket.NewPacket(data, layers.LayerTypeEthernet, gopacket.Default)
-		if packet, ok = p.(gopacket.Packet); ok {
+		packet = gopacket.NewPacket(data, layers.LayerTypeEthernet, gopacket.Default)
+		if packet != nil {
 			out <- packet
 		} else {
 			out <- &goul.ItemGeneric{Meta: goul.ItemTypeUnknown, DATA: data}

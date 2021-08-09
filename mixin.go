@@ -30,7 +30,6 @@ func (c *BaseCommon) GetLogger() Logger {
 // SetError implements CommonMixin
 func (c *BaseCommon) SetError(err error) {
 	c.err = err
-	return
 }
 
 // GetError implements CommonMixin

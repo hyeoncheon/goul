@@ -3,6 +3,7 @@ dist: bionic
 
 go:
   - 1.16.x
+  - master
 
 env:
   global:

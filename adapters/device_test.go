@@ -31,7 +31,6 @@ func Test_DeviceAdapter_11_NormalFlowReader(t *testing.T) {
 			recover()
 		}()
 		in <- &goul.ItemGeneric{Meta: "Message", DATA: []byte{1}}
-		return
 	}()
 
 	_, err = adapter.Read(in, nil)
@@ -63,7 +62,6 @@ func Test_DeviceAdapter_12_NormalFlowWriterTestmode(t *testing.T) {
 			recover()
 		}()
 		in <- &goul.ItemGeneric{Meta: "Message", DATA: []byte{1}}
-		return
 	}()
 
 	done, err := adapter.Write(in, nil) // with testmode

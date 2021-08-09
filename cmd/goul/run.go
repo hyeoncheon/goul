@@ -19,8 +19,7 @@ const (
 
 func run(opts *Options, sigs ...chan os.Signal) error {
 	var err error
-	var router goul.Router
-	router = &goul.Pipeline{Router: &goul.BaseRouter{}}
+	var router goul.Router = &goul.Pipeline{Router: &goul.BaseRouter{}}
 
 	logger := logger(opts)
 	router.SetLogger(logger)
@@ -93,6 +92,8 @@ func run(opts *Options, sigs ...chan os.Signal) error {
 				default: // if channel is still alive
 					close(control)
 				}
+			default:
+				logger.Warnf("got signal '%v' but no handler defined!", s.String())
 			}
 		}
 	}()

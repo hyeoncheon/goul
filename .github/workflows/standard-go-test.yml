@@ -1,0 +1,18 @@
+name: Standard Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  call-standard-test:
+    name: Standard Test
+    uses: hyeoncheon/.github/.github/workflows/go-test.yml@main
+    secrets: inherit
+
+  call-standard-coverage:
+    needs: [ call-standard-test ]
+    name: Standard Coverage
+    uses: hyeoncheon/.github/.github/workflows/go-coverage.yml@main
+    secrets: inherit

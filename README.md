@@ -7,7 +7,7 @@
 [![Code Climate](https://codeclimate.com/github/hyeoncheon/goul/badges/gpa.svg)](https://codeclimate.com/github/hyeoncheon/goul)
 [![Go Report Card](https://goreportcard.com/badge/github.com/hyeoncheon/goul)](https://goreportcard.com/report/github.com/hyeoncheon/goul)
 [![Go Reference](https://img.shields.io/badge/go-reference-blue)](https://pkg.go.dev/github.com/hyeoncheon/goul)
-[![GitHub license](https://img.shields.io/github/license/hyeoncheon/goul)](https://github.com/hyeoncheon/goul/blob/main/LICENSE.md)
+[![GitHub license](https://img.shields.io/github/license/hyeoncheon/goul)](https://github.com/hyeoncheon/goul/blob/main/LICENSE)
 
 Goul(거울; Mirror in English) is a tool for virtual network port mirroring
 over the Internet for network traffic analyze and/or security monitoring.

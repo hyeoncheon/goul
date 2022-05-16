@@ -1,0 +1,78 @@
+name: Goul Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v1
+
+  test:
+    needs: dependency-review
+    name: go${{ matrix.go-version }}/ubuntu-latest
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [ "1.16", "1.17", "1.18" ]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Test
+        run: |
+          sudo apt-get -qq update
+          sudo apt-get install -y libpcap-dev
+          env
+          go build -o goul -ldflags "-X main.buildNumber=`git rev-parse --short HEAD`" ./cmd/goul
+          ls -l goul
+          ./goul -v
+          go test -v -cover ./...
+
+  coverage:
+    needs: [ test ]
+    name: Test Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: go.mod
+
+      - name: Preparing
+        run: |
+          sudo apt-get -qq update
+          sudo apt-get install -y libpcap-dev
+          env
+
+      - name: Code Climate
+        uses: paambaati/codeclimate-action@v3.0.0
+        env:
+          CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
+        with:
+          coverageCommand: go test -coverprofile=coverage.txt -covermode=atomic ./...
+          coverageLocations: coverage.txt:gocov
+          prefix: github.com/${{ github.repository }}
+
+      - name: Coveralls
+        uses: shogo82148/actions-goveralls@v1
+        with:
+          path-to-profile: coverage.txt
+
+      - name: Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          verbose: true
+          files: ./coverage.txt

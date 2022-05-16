@@ -37,7 +37,7 @@ jobs:
           go test -v -cover -race ./...
 
   call-standard-coverage:
-    needs: [ call-standard-test ]
+    needs: [ test ]
     name: Standard Coverage
     uses: hyeoncheon/.github/.github/workflows/go-coverage.yml@main
     secrets: inherit

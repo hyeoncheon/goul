@@ -6,10 +6,35 @@ on:
   pull_request:
 
 jobs:
-  call-standard-test:
-    name: Standard Test
-    uses: hyeoncheon/.github/.github/workflows/go-test.yml@main
-    secrets: inherit
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v1
+
+  test:
+    needs: dependency-review
+    name: go${{ matrix.go-version }}/ubuntu-latest
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [ "1.16", "1.17", "1.18" ]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Test
+        run: |
+          sudo apt-get -qq update
+          sudo apt-get install -y libpcap-dev
+          env
+          go build -o goul -ldflags "-X main.buildNumber=`git rev-parse --short HEAD`" ./cmd/goul
+          ls -l goul
+          ./goul -v
+          go test -v -cover -race ./...
 
   call-standard-coverage:
     needs: [ call-standard-test ]

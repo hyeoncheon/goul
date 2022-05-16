@@ -73,6 +73,7 @@ func getOptions() *Options {
 	if help {
 		fmt.Println(versionString + "-" + buildNumber)
 		fmt.Println(helpMessage)
+		fmt.Println()
 		getopt.Usage()
 		return nil
 	}
@@ -93,5 +94,4 @@ const helpMessage = `
 If it runs as capturer mode, it captures all packets on local network
 interface and sends them to remote receiver over internet.
 The other side, while it runs as receiver mode, it receives packets from
-remote capturer and inject them into the interface on the system.
-`
+remote capturer and inject them into the interface on the system.`

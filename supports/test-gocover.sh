@@ -5,8 +5,6 @@
 
 set -x
 
-app=github.com/hyeoncheon/goul
-
-gocoverutil -coverprofile=cover.out test -v -covermode=count $app/... && \
+go test -v -coverprofile=cover.out -covermode=count ./... && \
 	go tool cover -html=cover.out -o cover.html
 

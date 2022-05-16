@@ -1,12 +1,13 @@
 # Goul, Virtual Port Mirror over Internet (for Cloud)
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/hyeoncheon/goul.svg)](https://pkg.go.dev/github.com/hyeoncheon/goul)
-[![Build Status](https://travis-ci.com/hyeoncheon/goul.svg?branch=master)](https://travis-ci.com/hyeoncheon/goul)
-[![Go Report Card](https://goreportcard.com/badge/github.com/hyeoncheon/goul)](https://goreportcard.com/report/github.com/hyeoncheon/goul)
-[![Code Climate](https://codeclimate.com/github/hyeoncheon/goul/badges/gpa.svg)](https://codeclimate.com/github/hyeoncheon/goul)
-[![Coverage Status](https://coveralls.io/repos/github/hyeoncheon/goul/badge.svg?branch=master)](https://coveralls.io/github/hyeoncheon/goul?branch=master)
+[![Goul Test](https://github.com/hyeoncheon/goul/actions/workflows/test.yml/badge.svg)](https://github.com/hyeoncheon/goul/actions/workflows/test.yml)
 [![DeepSource](https://deepsource.io/gh/hyeoncheon/goul.svg/?label=active+issues&token=j3LgjDcYYnoVXxWIhlnWaG-L)](https://deepsource.io/gh/hyeoncheon/goul/?ref=repository-badge)
-
+[![codecov](https://codecov.io/gh/hyeoncheon/goul/branch/main/graph/badge.svg?token=zEjYrMOOio)](https://codecov.io/gh/hyeoncheon/goul)
+[![Coverage Status](https://coveralls.io/repos/github/hyeoncheon/goul/badge.svg?branch=main)](https://coveralls.io/github/hyeoncheon/goul?branch=main)
+[![Code Climate](https://codeclimate.com/github/hyeoncheon/goul/badges/gpa.svg)](https://codeclimate.com/github/hyeoncheon/goul)
+[![Go Report Card](https://goreportcard.com/badge/github.com/hyeoncheon/goul)](https://goreportcard.com/report/github.com/hyeoncheon/goul)
+[![Go Reference](https://img.shields.io/badge/go-reference-blue)](https://pkg.go.dev/github.com/hyeoncheon/goul)
+[![GitHub license](https://img.shields.io/github/license/hyeoncheon/goul)](https://github.com/hyeoncheon/goul/blob/main/LICENSE.md)
 
 Goul(거울; Mirror in English) is a tool for virtual network port mirroring
 over the Internet for network traffic analyze and/or security monitoring.

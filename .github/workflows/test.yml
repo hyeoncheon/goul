@@ -18,7 +18,6 @@ jobs:
         uses: actions/dependency-review-action@v1
 
   test:
-    needs: dependency-review
     name: go${{ matrix.go-version }}/ubuntu-latest
     runs-on: ubuntu-latest
     strategy:

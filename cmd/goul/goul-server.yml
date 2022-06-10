@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: goul-server
+  namespace: nc
+  labels:
+    app: goul-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: goul-server
+  template:
+    metadata:
+      labels:
+        app: goul-server
+    spec:
+      # nodeSelector:
+      #   key: server
+      hostNetwork: true
+      containers:
+      - name: goul-server
+        image: nexclipper/goul:0.2-head
+        ports:
+        - containerPort: 6001
+        env:
+        - name: GOUL_DEVICE
+          value: "ens6f0"
+        command: ["goul"]
+        args: ["--server", "--debug", "--dev=$(GOUL_DEVICE)"]
